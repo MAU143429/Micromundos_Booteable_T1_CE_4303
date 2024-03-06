@@ -1,390 +1,560 @@
-ORG 0x8000                ;; Establece la direccion de memoria del juego
+org  0x8000
+bits 16
+
+jmp startProgram
+nop
+
+; Variables ------------------------------------------------------------------------------------------------
+
+time db  00h                        ; tiempo que representa los FPS del programa
+level dw 01h                        ; Nivel del juego
 
 
-jmp setup_game            ;; Ejecuta un salto al metodo setup 
-;; CONSTANTS
-VIDMEM		      equ 0B800h    ;; EStableciendo memoria 
-SCREENW		      equ 80        ;; Establece el ancho de pantalla 
-SCREENH		      equ 25        ;; Establece el largo de la pantalla
-WINCOND		      equ 5         ;; Condiciones de Victoria 
-BGCOLOR		      equ 0ffffh    ;; Etablece el color del fondo en Hexadecimal
-APPLECOLOR        equ 4020h     ;; EStablcer el color de la manzana
-TURTLECOLOR       equ 2040h     ;; Establece el color de la tortuga
-TIMER             equ 046Ch     ;; Establece una direccion de memoria para el timer 
-TURTLEXARRAY       equ 1000h     ;; EStablece la direccion de memoria que guarda las coordenadas X
-TURTLEYARRAY       equ 2000h     ;; EStablece la direccion de memoria que guarda las coordenadas Y
-UP			      equ 0         ;; Establece el vqlor de una constante que representa direccion.
-DOWN		      equ 1         ;; Establece el vqlor de una constante que representa direccion.
-LEFT		      equ 2         ;; Establece el vqlor de una constante que representa direccion.
-RIGHT		      equ 3         ;; Establece el vqlor de una constante que representa direccion.
-SO			      equ 4         ;; Establece el vqlor de una constante que representa direccion.
-SE		          equ 5         ;; Establece el vqlor de una constante que representa direccion.
-NO		          equ 6         ;; Establece el vqlor de una constante que representa direccion.
-NE		          equ 7         ;; Establece el vqlor de una constante que representa direccion.
-GREEN             equ 0A000h    ;; EStablece el color del verde hexadecimal
-RED               equ 0C000h    ;; EStablece el color del rojo hexadecimal
-BLUE		      equ 0010h     ;; EStablece el color del azul hexadecimal
-YELLOW		      equ 0E000h    ;; EStablece el color del amarillo hexadecimal
+; Constantes -----------------------------------------------------------------------------------------------
+
+width dw  140h                      ; screen width 320 p
+height dw  0c8h                     ; screen height 200 p
+
+gameHeight dw 46h ; Board height set to 100p
+gameWidth dw 12ah ; Board width set to 150p
 
 
-;; VARIABLES
-playerX:	 dw 40        ;;Variable de tamaño de palabra (16 bits) que almacena la coordenada X del jugador
-playerY:	 dw 12        ;;Variable de tamaño de palabra (12 bits) que almacena la coordenada Y del jugador
-appleX:		 dw 16        ;;Variable de tamaño de palabra (16 bits) que almacena la coordenada X de la manzana
-appleY:		 dw 8         ;;Variable de tamaño de palabra (8 bits) que almacena la coordenada Y de la manzana
-direction:	 db 8         ;;Variable de tamaño de palabra (8 bits) que almacena ldireccion actual
-snakeLength: dw 1         ;;Variable de tamaño de palabra (1 bits) que almacena la longitud de la serpiente
-printRoad:   db 0         ;;Variable de tamaño de palabra (1 bits) que almacena la flag para pintar el camino
-eraseRoad:   db 0         ;;Variable de tamaño de palabra (1 bits) que almacena la flag para borrar el camino
+gamePaused dw 00h ; Flag to know if the game is paused. 0 not paused. 1 paused
 
-;; LOGIC --------------------
-setup_game:
-	;; Set video mode - VGA mode 03h (80x25 text mode, 16 colors)
-	mov ax, 0003h
-	int 10h
+; player
 
-	;; Set up video memory
-	mov ax, VIDMEM
-	mov es, ax		; ES:DI <- video memory (0B800:0000 or B8000)
-
-	;; Set 1st snake segment "head"
-	mov ax, [playerX]
-	mov word [TURTLEXARRAY], ax
-	mov ax, [playerY]
-	mov word [TURTLEYARRAY], ax
-	
-	;; Hide cursor
-	mov ah, 02h
-	mov dx, 2600h	; DH = row, DL = col, cursor is off the visible screen
-	int 10h
-
-;; Game loop
-game_loop:
-	;; Clear screen every loop iteration
-	mov ax, BGCOLOR
-	xor di, di
-	mov cx, SCREENW*SCREENH
-	rep stosw				; mov [ES:DI], AX & inc di
-
-	;; Draw turtle
-	xor bx, bx				; Array index
-	mov cx, [snakeLength]	; Loop counter
-	mov ax, TURTLECOLOR
-	.turtle_loop:
-		imul di, [TURTLEYARRAY+bx], SCREENW*2	; Y position of snake segment, 2 bytes per character
-		imul dx, [TURTLEXARRAY+bx], 2			; X position of snake segment, 2 bytes per character
-		add di, dx
-        mov word [es:di], ax    ; Coloca el color de la tortuga en la posición de la memoria de video
-
-		inc bx
-		inc bx
-	loop .turtle_loop
+player_x dw      03h   ; x position player 
+player_y dw      0ah   ; y position player 
+temp_player_x dw 03h   ; temp x position player
+temp_player_y dw 0ah   ; temp y position player
+player_speed dw  06h   ; player speed
+player_color dw  0ah   ; player color
+player_size dw   05h   ; player dimensions 
+player_dir dw    00h   ; last direction of player (0 right, 1 down, 2 left, 3 up) 
+tortugaSprite db 0b00100, 0b11111, 0b01110, 0b11111, 0b00000
 
 
-	;; Move turtle in current direction
-	mov al, [direction]
-    mov si, [playerX]
-    mov di, [playerY]
+; Texts ---------------------------------------------------------------------------------------------------
 
-	
-	; Verifica si la flag de borrar esta activa sino se sale del metodo
-	;mov al, [eraseRoad]
-	;cmp al, 1
-	;je set_default_color
+menu1 dw '           ----------------         ', 0h
+menu2 dw '           - MICRO-MUNDOS -         ', 0h
+menu3 dw '           -  BIENVENIDO  -         ', 0h
+menu4 dw '           ----------------         ', 0h
+menu5 dw '   Presione ESPACIO para continuar  ', 0h
 
-	cmp al, UP
-	je move_up
-	cmp al, DOWN
-	je move_down
-	cmp al, LEFT
-	je move_left
-	cmp al, RIGHT
-	je move_right
-    cmp al, SO
-	je move_SO
-	cmp al, SE
-	je move_SE
-	cmp al, NO
-	je move_NO
-	cmp al, NE
-	je move_NE
+winner1 dw '          ---------------           ', 0h
+winner2 dw '          - FELICIDADES -           ', 0h
+winner3 dw '          -   GANASTE   -           ', 0h
+winner4 dw '          ---------------           ', 0h
+winner5 dw '   Presione ENTER para repetir    ', 0h
 
-	jmp update_snake
+looser1 dw '          ---------------           ', 0h
+looser2 dw '          -   PERDISTE  -           ', 0h
+looser3 dw '          -      :v     -           ', 0h
+looser4 dw '          ---------------           ', 0h
+looser5 dw '   Presione ENTER para repetir    ', 0h
 
-	move_up:
-		; Verifica si la flag de pintar esta activa sino se sale del metodo
-		mov al, [printRoad]
-		cmp al, 1
-		je set_up_down_color
-		dec di		; Move up 1 row on the screen
-		jmp update_snake
+; In-Game Texts ...........................................................................................
 
-	move_down:
-		; Verifica si la flag de pintar esta activa sino se sale del metodo
-		mov al, [printRoad]
-		cmp al, 1
-		je set_up_down_color
-		inc di		; Move down 1 row on the screen
-		jmp update_snake
-		
+inGame1 dw '-------------------------------------', 0h
+inGame2 dw '-            Controles              -', 0h
+inGame3 dw '- Mover-> Flechas y Q,E,A,D         -', 0h
+inGame4 dw '- Reset-> R | Terminar -> ESC       -', 0h
+inGame5 dw '- Pintar-> ESPACIO | Borrar -> Z    -', 0h
+inGame6 dw '-      Lvl.:', 0h
+inGame7 dw '1              -', 0h
+inGame8 dw '2              -', 0h
+inGame9 dw '-------------------------------------', 0h
 
-	move_left:
-		; Verifica si la flag de pintar esta activa sino se sale del metodo
-		mov al, [printRoad]
-		cmp al, 1
-		je set_left_right_color
-		dec si		; Move left 1 column on the screen
-		jmp update_snake
-		
 
-	move_right:
-		; Verifica si la flag de pintar esta activa sino se sale del metodo
-		mov al, [printRoad]
-		cmp al, 1
-		je set_left_right_color
-		inc si		; Move right 1 column on the screen
-		jmp update_snake
-		
+textColor     dw 150h
+
+
+; GAME LOGIC ****************************************************************************************************
+startProgram:
+        call initDisplay    ; starts display
+        call clearScreen    ; clears display
+        jmp  menuLoop       
+
+startGame:                          
+    call    setLevel1               ; initialize lvl 1
+    call    clearScreen             ; paints the screen black 
+    call    drawInGameText          ; function to display the controls in game
+    jmp     gameLoop                
+
+initDisplay:                        ;video mode interruption to draw on screen
+    mov ah, 00h     
+    mov al, 13h     
+    int 10h        
+    ret
+
+menuLoop:                           ; Menu cycle
+
+    call    checkPlayerMenuAction   ; checks if the player has pressed space
+
+    call    drawTextMenu            ; draws menu on screen
+
+    jmp     menuLoop                ; stays in the cycle if nothing happens
+
+winnerLoop: 
+
+    call    checkPlayerMenuAction   ; Checks if the player pressed space to play again
     
-    move_NO:
-		; Verifica si la flag de pintar esta activa sino se sale del metodo
-		mov al, [printRoad]
-		cmp al, 1
-		je set_NO_SE_color
-        dec si
-        dec di
-		jmp update_snake
-		
+    call    drawWinnerMenu          ; Draws winning screen
 
-    move_SO:
-		; Verifica si la flag de pintar esta activa sino se sale del metodo
-		mov al, [printRoad]
-		cmp al, 1
-		je set_NE_SO_color
-        dec si
-        inc di
-		jmp update_snake
-		
+    jmp     winnerLoop              ; stays in the cycle if nothing happens
 
-    move_SE:
-		; Verifica si la flag de pintar esta activa sino se sale del metodo
-		mov al, [printRoad]
-		cmp al, 1
-		je set_NO_SE_color
-        inc si
-        inc di
-		jmp update_snake
-		
 
-    move_NE:
-		; Verifica si la flag de pintar esta activa sino se sale del metodo
-		mov al, [printRoad]
-		cmp al, 1
-		je set_NE_SO_color
-        inc si
-        dec di
-		jmp update_snake
-		
+gameLoop:                           ; game logic loop
+
+    call checkPlayerGameInput       ; function to check whether the keys have been pressed or not  
+
+    call renderPlayer               ; function to draw the player constantly
+
+    jmp     gameLoop                ; stays in the loop
+
+; Render functions **************************************************************************************
+
+clearScreen:                        ; paints black the display
+    mov     cx, 00h                 ; starting x
+    mov     dx, 00h                 ; starting y
+    jmp     clearScreenAux          
+
+clearScreenAux:
+    mov     ah, 0ch                 
+    mov     al, 00h                 
+    mov     bh, 00h
+    int     10h                     ; interruption that draws a black pixel
+    inc     cx                      ; increases x to draw horizontaly
+    cmp     cx, [width]             
+    jng     clearScreenAux          
+    jmp     clearScreenAux2         
+
+clearScreenAux2:                  
+    mov     cx, 00h                 ; restarts x
+    inc     dx                      ; increases y to draw in the next line
+    cmp     dx, [height]            
+    jng     clearScreenAux          
+    ret                             
+
+
+checkPlayerMenuAction:              ; Checks if a key has been pressed in the menu
+    mov     ah, 01h                
+    int     16h                     ; interruption to get keyboard state
+    jz      exitRoutine             ; if nothing is pressed, returns
+    mov     ah, 00h                 
+    int     16h                     ; interruption to read the key that was pressed
+    cmp     ah, 39h                 ; compares if the key pressed was the space
+    je      startGame               ; starts game if space was pressed
+
+    ret
+
+
+drawTextMenu:                       ; Draws the text menu
+    mov     bx, [textColor]         ; sets the color of the pixel to be drawn
+
+    mov     bx, menu1               ; sets the text to be drawn
+    mov     dh, 07h                 ; y coordinate in pixels
+    mov     dl, 02h                 ; x coordinate in pixels
+    call    drawText                ; calls the function to draw the text
+
+    mov     bx, menu2           
+    inc     dh                      ; increases y to draw the next text
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, menu3            
+    inc     dh                      
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, menu4           
+    inc     dh                      
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, menu5           
+    mov     dh, 10h                     
+    mov     dl, 02h                 
+    call    drawText                
+
+    ret
+
+
+drawInGameText:
+    mov     bx, [textColor]         ; Sets the pixel colors
+
+    mov     bx, inGame1             ;start * box
+    mov     dh, 0ch                 ;y text coordinate
+    mov     dl, 02h                 ;x text coordinate               
+    call    drawText
+
+    mov     bx, inGame2             ;controls text    
+    inc     dh            
+    mov     dl, 02h               
+    call    drawText   
+
+    mov     bx, inGame3             ;movement text       
+    inc     dh            
+    mov     dl, 02h               
+    call    drawText
+
+    mov     bx, inGame4             ;restart text
+    inc     dh            
+    mov     dl, 02h               
+    call    drawText
+
+    mov     bx, inGame5             ;pause text
+    inc     dh            
+    mov     dl, 02h               
+    call    drawText
+
+    mov     bx, inGame6             ;Level text
+    inc     dh            
+    mov     dl, 02h               
+    call    drawText
+
+    mov     bx, inGame9             ;end * box
+    mov     dh, 12h          
+    mov     dl, 02h               
+    call    drawText
+
+    ;checks what lvl is drawing to indicate it to the player
+    mov     bx, [level]
+    cmp     bx, 1
+    je      drawInGameTextAux
+    jmp     drawInGameTextAux2
+
+
+    ret
+
+drawInGameTextAux:
+    mov     bx, inGame7                      
+    mov     dl, 17h
+    mov     dh, 11h               
+    call    drawText
+    ret
+
+drawInGameTextAux2:
+    mov     bx, inGame8                    
+    mov     dl, 17h
+    mov     dh, 11h              
+    call    drawText
+    ret
+
+
+drawWinnerMenu:                     ; Draws the text that is displayed once the player has won
+    mov     bx, [textColor]         ; indicates text color
+    inc     bx                      ; increases the number of the color to give it a rainbow appearance
+    mov     [textColor], bx         ; saves the new color number
+
+    mov     bx, winner1             ; selects the text to display
+    mov     dh, 07h                 ; y coordinate
+    mov     dl, 02h                 ; x coordinate
+    call    drawText                ; draws the text
+
+    mov     bx, winner2             ; changes the text message
+    inc     dh                      ; increses y to draw under the previous message
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, winner3          
+    inc     dh                      
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, winner4         
+    inc     dh                                        
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, winner5         
+    mov     dh, 10h                     
+    mov     dl, 02h                 
+    call    drawText                
+
+    ret
+
+drawText:                           ; Draws text on screen
+    cmp     byte [bx],0             ; checks if the draw is complete
+    jz      finishDraw              ; returns when the draw is finished
+    jmp     drawChar                ; draws next character
+
+drawChar:                           ; Draws a character on screen
+    push    bx                      ; pushes the character on bx
+    mov     ah, 02h                 ; indicates that a character is going to be printed on screen
+    mov     bh, 00h                 ; indicates that its going to be printed in the current page
+    int     10h                     ; calls the interruption
+    pop     bx                      ; pops the character into bx
+
+    push    bx                      
+    mov     al, [bx]                ; saves the current character
+    mov     ah, 0ah                 ; Mueve a ah un 10
+    mov     bh, 00h                 
+    mov     bl, [textColor]         ; sets the color of the text
+    mov     cx, 01h                 ; indicates that only one character will be printed
+    int     10h                     ; calls the interruption
+    pop     bx                      
+
+    inc     bx                      ; reads the next byte
+    inc     dl                      
+    jmp     drawText                ; jumps back to the starting cycle
+
+finishDraw:                         ; Returns once the text is written
+    ret                             
+
+
+setLevel1:                          
+    mov     ax, 01h                 
+    mov     [level], ax                   ; Sets the player in level 1
+
+    mov     ax, 03h                       
+    mov     [player_x], ax                ; player x starting coordinate
+    mov     [temp_player_x], ax           ; starts the temporal x in the same place so the player wont move unintentionally
+    mov     ax, 0ah                       
+    mov     [player_y], ax                ; player y starting coordinate
+    mov     [temp_player_y], ax           ; starts the temporal y in the same place so the player wont move unintentionally
+
+    mov     ax, 00h                       
+    mov     [gamePaused], ax              ; Sets the game to unpaused
+    ret
+
+renderPlayer:
+    mov     cx, [player_x]            ; current x
+    mov     dx, [player_y]            ; current y
+    jmp     renderPlayerAux           
+
+renderPlayerAux:
+     mov     ah, 0ch                 ; Draw pixel
+     mov     al, [player_color]      ; player color 
+     mov     bh, 00h                 ; Page
+     int     10h                     ; Interrupt
+     inc     cx                      ; cx + 1
+     mov     ax, cx                  
+     sub     ax, [player_x]          ; Substract player width with the current column
+     cmp     ax, [player_size]       ; compares if ax is greater than player size
+     jng     renderPlayerAux         ; if not greater, draw next column
+     jmp     renderPlayerAux2        ; Else, jump to next aux function
+
+renderPlayerAux2:
+    mov     cx, [player_x]            ; reset columns
+    inc     dx                        ; dx +1
+    mov     ax, dx                  
+    sub     ax, [player_y]            ; Substract player height with the current row
+    cmp     ax, [player_size]         ; compares if ax is greater than player size
+    jng     renderPlayerAux           ; if not greater, draw next row
+    ret                               ; Else, return
+
+
+deletePlayer:                       ; Funtion to erase player from screen
+    mov     al, 00h                 ; Move color black to al
+    mov     [player_color], al      ; Updates player color to black 
+    call    renderPlayer            ; Render player in color black
+    mov     al, 0ah                 ; Set al as the original player color
+    mov     [player_color], al      ; Updates player color to black
+    ret                             ; return
+
+checkPlayerGameInput:
+    mov     ax, 00h                 ; Reset reg ax
+    cmp     ax, [gamePaused]        ; move the gamePaused Flag to ax
+    je      makeMovements           ; If the game is not paused, player can move 
+
+makeMovements:
+    mov     ah, 01h                 ; gets keyboard status
+    int     16h                     ; interrupt 
+
+    jz      exitRoutine             ; if not pushed key, exit
+
+    mov     ah, 00h                 ; Read key
+    int     16h                     ; interrupt
+
+    cmp     ah, 48h                 ; If the key pushed is arrow up
+    je      playerUp                ; Moves player up
     
+    cmp     ah, 50h                 ; If the key pushed is arrow down
+    je      playerDown              ; Moves player down
 
-	;; Update snake position from playerX/Y changes
-	update_snake:
-        mov word [playerX], si  ;; Update snake/player X,Y position
-        mov word [playerY], di
+    cmp     ah, 4dh                 ; If the key pushed is arrow right 
+    je      playerRight             ; Moves player right
 
-		;; Update all snake segments past the "head", iterate back to front
-		;;imul bx, [snakeLength], 2	; each array element = 2 bytes
-		;;.turtle_loop:
-		;;	mov ax, [SNAKEXARRAY-2+bx]			; X value
-		;;	mov word [SNAKEXARRAY+bx], ax
-		;;	mov ax, [SNAKEYARRAY-2+bx]			; Y value
-		;;	mov word [SNAKEYARRAY+bx], ax
-			
-		;;	dec bx								; Get previous array elem
-		;;	dec bx
-		;;jnz .turtle_loop							; Stop at first element, "head"
+    cmp     ah, 4bh                 ; If the key pushed is arrow left 
+    je      playerLeft              ; Moves player left
 
-	;; Store updated values to head of snake in arrays
-	mov word [TURTLEXARRAY], si
-	mov word [TURTLEYARRAY], di
-	
-	;; Lose conditions
-	;; 1) Hit borders of screen
-	;cmp di, -1		; Top of screen
-	;je game_lost
-	;cmp di, SCREENH	; Bottom of screen
-	;je game_lost
-	;cmp si, -1		; Left of screen
-	;je game_lost
-	;cmp si, SCREENW ; Right of screen
-	;je game_lost
+    cmp     ah, 13h                 ; If the key pushed is r
+    je      resetGame               ; Resets game
 
-	; 2) WIN CONDITION 
-	;cmp word [snakeLength], 1	; Only have starting segment
-	;je get_player_input
+    cmp     ah, 72h                 ; If the key pushed is R
+    je      resetGame               ; Resets game
 
-	;mov bx, 2					; Array indexes, start at 2nd array element
-	;mov cx, [snakeLength]		; Loop counter
-	;check_hit_snake_loop:
-	;		cmp si, [TURTLEXARRAY+bx]
-	;	jne .increment
+    ; cmp     ah, 26h                 ; If the key pushed is l
+    ; je      pauseGame               ; Pause the game
 
-	;	cmp di, [TURTLEYARRAY+bx]
-	;	je game_lost				; Hit snake body, lose game :'(
+    ; cmp     ah, 6ch                 ; If the key pushed is L
+    ; je      pauseGame               ; Pause the game
 
-	;	.increment:
-	;		inc bx
-	;		inc bx
-	;loop check_hit_snake_loop
+    ret
 
-	get_player_input:
+playerUp:                           ; Moves player up
+    mov     ax, 06h                 ; Moves 6 to ax
+    cmp     [player_y], ax          ; compares the player_y to the up border
+    jle      exitRoutine             ; if equal, return. Dont move
 
-		mov bl, [direction]		
-		
-		; Reset a 0 de ah y interrupcion de teclado
-		xor ah, ah
-		int 16h					
+    call    deletePlayer            ; Deletes player from screen
 
-        
-		cmp ah, 48h      
-        je arrow_up_pressed
-        cmp ah, 50h     
-        je arrow_down_pressed
-        cmp ah, 4Bh    
-        je arrow_left_pressed
-        cmp ah, 4Dh      
-        je arrow_right_pressed
-        cmp al, 'q'
-        je q_pressed
-        cmp al, 'a'
-        je a_pressed
-        cmp al, 'e'
-        je e_pressed
-        cmp al, 'd'
-        je d_pressed
-        cmp al, 'r'
-        je r_pressed
-		cmp al, 'z'
-        je z_pressed
-		cmp ah, 32  
-        je space_pressed
-     
+    mov     ax, [player_y]          
+    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    
+    ;call    checkPlayerColision     ; checks if the movement causes a colition
 
-		jmp update_snake
+    mov     [player_y], ax          ; Updates pos y of player
 
-        space_pressed:
-            ;; Change printRoad status flag
-			mov ax, [printRoad]
-            xor ax, 1  
-            mov [printRoad], ax
-			jmp update_position
-			
-
-		z_pressed:
-            ;; Change eraseRoad status flag
-			mov ax, [eraseRoad]
-            xor ax, 1  
-            mov [eraseRoad], ax
-			jmp update_position
-
-		arrow_up_pressed:
-            ;; Move up
-			mov bl, UP
-			jmp update_position
-
-		arrow_down_pressed:
-            ;; Move down
-			mov bl, DOWN
-			jmp update_position
-
-		arrow_left_pressed:
-            ;; Move left
-			mov bl, LEFT
-			jmp update_position
-
-		arrow_right_pressed:
-            ;; Move right
-			mov bl, RIGHT
-			jmp update_position
-
-        a_pressed:
-            ;; Move NO
-			mov bl, NO
-			jmp update_position
-
-		d_pressed:
-            ;; Move NE
-			mov bl, NE
-			jmp update_position
-
-		q_pressed:
-            ;; Move SO
-			mov bl, SO
-			jmp update_position
-
-		e_pressed:
-            ;; Move SE
-			mov bl, SE
-		    jmp update_position
-
-		r_pressed:
-            ;; Reset
-			int 19h     ; Reload bootsector
-
-	
-	update_position:
-		mov byte [direction], bl		; Update direction
-		
-
-jmp game_loop
-
-color_draw:
-	; Dibujar el color en la posición actual de la tortuga (playerX, playerY)
-	imul di, [playerY], SCREENW*2
-	imul dx, [playerX], 2
-	add di, dx
-	stosw
-	jmp update_position
-
-set_up_down_color:
-	mov ax, GREEN  
-	jmp color_draw
-
-set_left_right_color:
-	mov ax, RED  
-	jmp color_draw
-
-set_NE_SO_color:
-	mov ax, BLUE  
-	jmp color_draw
-
-set_NO_SE_color:
-	mov ax, YELLOW  
-	jmp color_draw
-
-set_default_color:
-	mov ax, BGCOLOR  
-	jmp color_draw
-
-;; End conditions
-game_won:
-	mov dword [ES:0000], 1F491F57h	; WI
-	mov dword [ES:0004], 1F211F4Eh	; N!
-	jmp reset
-	
-game_lost:
-	mov dword [ES:0000], 1F4F1F4Ch	; LO
-	mov dword [ES:0004], 1F451F53h	; SE
-	
-;; Reset the game
-reset:
-	xor ah, ah
-	int 16h
-    int 19h     ; Reload bootsector
+    ret                             ; return
 
 
+playerDown:                         ; Moves player down
+    mov     ax, [gameHeight]                 ; Moves the game height to ax
+    add     ax, 06h                 ; add 6 to ax 
+    cmp     [player_y], ax          ; compares the player_y to the up border
+    jge      exitRoutine            ; if equal, return. Dont move
+
+    call    deletePlayer            ; Deletes player from screen
+
+    mov     ax, [player_y]          
+    add     ax, [player_speed]      ; adds the speed to the player position in y to move down
+    mov     [temp_player_y], ax     
+    ;call    checkPlayerColision     
+
+    mov     [player_y], ax          ; Updates pos y of player
+
+    ret                             ; return
+
+playerRight:                        ; Moves player right
+    mov     ax, [gameWidth]         ; Moves the game height to ax
+    add     ax, 06h                 
+    cmp     [player_x], ax          ; compares the player_y to the right border
+    jge      exitRoutine            ; if equal, return. Dont move
+
+    call    deletePlayer            ; Deletes player from screen
+
+    mov     ax, [player_x]          ; gets x position
+    add     ax, [player_speed]      ; adds speed to x position
+    mov     [temp_player_x], ax     ; stores the new position in temp variable
+    ;call    checkPlayerColision     ; checks for colision
+
+    mov     [player_x], ax          ; Updates pos x of player
+
+    ret                             ; return
+
+playerLeft:                         ; Moves player left
+    mov     ax, 06h                 ; Moves the game height to ax
+    cmp     [player_x], ax          ; compares the player_y to the right border
+    jle      exitRoutine             ; if equal, return. Dont move
+
+    call    deletePlayer            ; Deletes player from screen
+
+    mov     ax, [player_x]          
+    sub     ax, [player_speed]      
+    mov     [temp_player_x], ax     
+    ;call    checkPlayerColision     
+
+    mov     [player_x], ax          
+    
+    ret                             
+
+; ;-----------------------Render Goal-----------------------
+
+; renderGoal:
+;     mov    ax, 01h
+;     cmp    ax, [level]
+;     je     renderGoalLevel1
+;     jmp    renderGoalLevel2
+
+; renderGoalLevel1: 
+;     mov ax, [goal_level_1_x]
+;     mov [goal_x], ax
+;     mov ax, [goal_level_1_y]
+;     mov [goal_y], ax
+;     jmp renderGoalAux
+
+; renderGoalLevel2: 
+;     mov ax, [goal_level_2_x]
+;     mov [goal_x], ax
+;     mov ax, [goal_level_2_y]
+;     mov [goal_y], ax
+;     jmp renderGoalAux
+
+; renderGoalAux:
+;     mov     cx, [goal_x]            
+;     mov     dx, [goal_y]            
+;     jmp     renderGoalAux1         
+
+; renderGoalAux1:
+;     mov     ah, 0ch                 ; Draw pixel
+;     mov     al, [goal_color]        ; player color 
+;     mov     bh, 00h                 ; Page
+;     int     10h                     ; Interrupt 
+;     inc     cx                      ; cx +1
+;     mov     ax, cx                  
+;     sub     ax, [goal_x]          ; Substract player width with the current column
+;     cmp     ax, [player_size]       ; compares if ax is greater than player size
+;     jng     renderGoalAux1         ; if not greater, draw next column
+;     jmp     renderGoalAux2        ; Else, jump to next aux function
+
+; renderGoalAux2:
+;     mov     cx, [goal_x]            ; reset columns
+;     inc     dx                        ; dx +1
+;     mov     ax, dx                  
+;     sub     ax, [goal_y]            ; Substract player height with the current row
+;     cmp     ax, [player_size]         ; compares if ax is greater than player size
+;     jng     renderGoalAux1           ; if not greater, draw next row
+;     ret                               ; Else, return
+
+;-----------------------Check colisions-----------------------
+
+;compares if the pixel in the position of the temp x and y of the player, matches the color of a wall
+;if that happens it means the player movement made him collide with a wall
+;But if the color of the pixel is red, it means the player reached the goal
 
 
+; checkPlayerColision:
+;     push ax
+
+;     mov cx, [temp_player_x]
+;     mov dx, [temp_player_y]
+;     mov ah, 0dh
+;     mov bh, 00h
+;     int 10h
+
+;     cmp al, [walls_color]
+;     je exitPlayerMovement
+
+;     cmp al, [goal_color]
+;     je goalReached
+
+;     pop ax
+
+;     ret
+
+; goalReached:
+;     mov    ax, 01h
+;     cmp    ax, [level]
+;     je     startLevel2
+;     call   clearScreen
+;     jmp    winnerLoop
 
 
+exitPlayerMovement:
+    mov     ax, [player_x]            
+    mov     [temp_player_x], ax           
+    mov     ax, [player_y]            
+    mov     [temp_player_y], ax          
 
+    call resetGame 
+
+resetGame:
+    call clearScreen
+    jmp startGame
+
+exitRoutine:                        
+    ret                             
