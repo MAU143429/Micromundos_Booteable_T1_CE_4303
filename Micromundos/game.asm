@@ -8,12 +8,20 @@ nop
 
 time db  00h                        ; tiempo que representa los FPS del programa
 level dw 01h                        ; Nivel del juego
+paintMode dw 00h ; Flag para indicar si el jugador está en modo de pintura
+eraseMode   dw 00h   ; Estado de borrado (0: No borrar, 1: Borrar)
+currentColor dw 0Ah   ; Color actual (por defecto, 0Ah podría ser verde)
 
 
 ; Constantes -----------------------------------------------------------------------------------------------
 
 width dw  140h                      ; screen width 320 p
 height dw  0c8h                     ; screen height 200 p
+purple_color equ 50h    ;; EStablece el color del verde hexadecimal
+red_color equ 30h    ;; EStablece el color del verde hexadecimal
+blue_color equ 70h    ;; EStablece el color del verde hexadecimal
+yellow_color equ 60h    ;; EStablece el color del verde hexadecimal
+
 
 gameHeight dw 46h ; Board height set to 100p
 gameWidth dw 12ah ; Board width set to 150p
@@ -27,6 +35,8 @@ player_x dw      03h   ; x position player
 player_y dw      0ah   ; y position player 
 temp_player_x dw 03h   ; temp x position player
 temp_player_y dw 0ah   ; temp y position player
+color_player_x dw 03h   ; color x position player
+color_player_y dw 0ah   ; color y position player
 player_speed dw  06h   ; player speed
 player_color dw  0ah   ; player color
 player_size dw   05h   ; player dimensions 
@@ -40,7 +50,7 @@ menu1 dw '           ----------------         ', 0h
 menu2 dw '           - MICRO-MUNDOS -         ', 0h
 menu3 dw '           -  BIENVENIDO  -         ', 0h
 menu4 dw '           ----------------         ', 0h
-menu5 dw '   Presione ESPACIO para continuar  ', 0h
+menu5 dw '   Presione ENTER para continuar    ', 0h
 
 winner1 dw '          ---------------           ', 0h
 winner2 dw '          - FELICIDADES -           ', 0h
@@ -144,7 +154,7 @@ checkPlayerMenuAction:              ; Checks if a key has been pressed in the me
     jz      exitRoutine             ; if nothing is pressed, returns
     mov     ah, 00h                 
     int     16h                     ; interruption to read the key that was pressed
-    cmp     ah, 39h                 ; compares if the key pressed was the space
+    cmp     al, 0Dh                 ; compares if the key pressed was the enter
     je      startGame               ; starts game if space was pressed
 
     ret
@@ -370,6 +380,7 @@ makeMovements:
 
     cmp     ah, 48h                 ; If the key pushed is arrow up
     je      playerUp                ; Moves player up
+
     
     cmp     ah, 50h                 ; If the key pushed is arrow down
     je      playerDown              ; Moves player down
@@ -380,21 +391,48 @@ makeMovements:
     cmp     ah, 4bh                 ; If the key pushed is arrow left 
     je      playerLeft              ; Moves player left
 
+    cmp     al, 'q'                 ; If the key pushed is q
+    je      playerSE               ; Pause the game
+
+    cmp     al, 'a'                 ; If the key pushed is a
+    je      playerNE                ; Pause the game
+
+    cmp     al, 'e'                 ; If the key pushed is e
+    je      playerSO               ; Pause the game
+
+    cmp     al, 'd'                 ; If the key pushed is d
+    je      playerNO               ; Pause the game
+
+    cmp     al, 'z'                 ; If the key pushed is z
+    je      playerNO               ; Pause the game
+
+    cmp     al, 20h                 ; If the key pushed is space
+    je      togglePaintMode         ; Change the paintmode flag
+
     cmp     ah, 13h                 ; If the key pushed is r
     je      resetGame               ; Resets game
 
     cmp     ah, 72h                 ; If the key pushed is R
     je      resetGame               ; Resets game
 
-    ; cmp     ah, 26h                 ; If the key pushed is l
-    ; je      pauseGame               ; Pause the game
 
-    ; cmp     ah, 6ch                 ; If the key pushed is L
-    ; je      pauseGame               ; Pause the game
 
     ret
 
 playerUp:                           ; Moves player up
+
+    ; Apenas entra actualiza el color al que deberia printear segun el movimiento
+    mov     al, [purple_color]               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     ax, [player_x] 
+    mov     [color_player_x], ax
+    xor     ax, ax
+    mov     ax, [player_y] 
+    mov     [color_player_y], ax
+    xor     ax, ax
+
+
     mov     ax, 06h                 ; Moves 6 to ax
     cmp     [player_y], ax          ; compares the player_y to the up border
     jle      exitRoutine             ; if equal, return. Dont move
@@ -405,14 +443,73 @@ playerUp:                           ; Moves player up
     sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
     mov     [temp_player_y], ax     ; stores the new position in the temp y
     
-    ;call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; checks if the movement causes a colition
 
     mov     [player_y], ax          ; Updates pos y of player
 
-    ret                             ; return
+    jmp verifyMode
 
 
+playerNO:                           ; Moves player NO
+
+    mov     al, [red_color]               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     ax, [player_x] 
+    mov     [color_player_x], ax
+    xor     ax, ax
+    mov     ax, [player_y] 
+    mov     [color_player_y], ax
+    xor     ax, ax
+
+    mov     ax, 06h                 ; Moves 6 to ax
+    cmp     [player_y], ax          ; compares the player_y to the up border
+    jle      exitRoutine             ; if equal, return. Dont move
+
+    xor     ax,ax
+
+    mov     ax, 06h                 ; Moves 6 to ax
+    cmp     [player_y], ax          ; compares the player_y to the up border
+    jle      exitRoutine             ; if equal, return. Dont move
+
+    call    deletePlayer            ; Deletes player from screen
+
+    mov     ax, [player_y]          
+    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    
+    call    checkPlayerColision     ; checks if the movement causes a colition
+
+    mov     [player_y], ax          ; Updates pos y of player
+
+
+    mov     ax, [player_x]          
+    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_x], ax     ; stores the new position in the temp y
+
+    call    checkPlayerColision     ; checks if the movement causes a colition
+
+    mov     [player_x], ax          ; Updates pos y of player
+
+   
+    jmp verifyMode
+
+
+    
 playerDown:                         ; Moves player down
+
+
+; Apenas entra actualiza el color al que deberia printear segun el movimiento
+    mov     al, [purple_color]               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     ax, [player_x] 
+    mov     [color_player_x], ax
+    xor     ax, ax
+    mov     ax, [player_y] 
+    mov     [color_player_y], ax
+    xor     ax, ax
+
     mov     ax, [gameHeight]                 ; Moves the game height to ax
     add     ax, 06h                 ; add 6 to ax 
     cmp     [player_y], ax          ; compares the player_y to the up border
@@ -423,13 +520,64 @@ playerDown:                         ; Moves player down
     mov     ax, [player_y]          
     add     ax, [player_speed]      ; adds the speed to the player position in y to move down
     mov     [temp_player_y], ax     
-    ;call    checkPlayerColision     
+    call    checkPlayerColision     
 
     mov     [player_y], ax          ; Updates pos y of player
 
-    ret                             ; return
+    jmp verifyMode
+
+
+playerSE:                           ; Moves player up
+
+    ; Apenas entra actualiza el color al que deberia printear segun el movimiento
+    mov     al, [red_color]               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     ax, [player_x] 
+    mov     [color_player_x], ax
+    xor     ax, ax
+    mov     ax, [player_y] 
+    mov     [color_player_y], ax
+    xor     ax, ax
+
+    mov     ax, 06h                 ; Moves 6 to ax
+    cmp     [player_y], ax          ; compares the player_y to the up border
+    jle      exitRoutine             ; if equal, return. Dont move
+
+    call    deletePlayer            ; Deletes player from screen
+
+    mov     ax, [player_y]          
+    add     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    
+    call    checkPlayerColision     ; checks if the movement causes a colition
+
+    mov     [player_y], ax          ; Updates pos y of player
+
+    mov     ax, [player_x]          
+    add     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_x], ax     ; stores the new position in the temp y
+
+    call    checkPlayerColision     ; checks if the movement causes a colition
+
+    mov     [player_x], ax          ; Updates pos y of player
+
+    jmp     verifyMode  
 
 playerRight:                        ; Moves player right
+
+    ; Apenas entra actualiza el color al que deberia printear segun el movimiento
+    mov     al, [yellow_color]               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     ax, [player_x] 
+    mov     [color_player_x], ax
+    xor     ax, ax
+    mov     ax, [player_y] 
+    mov     [color_player_y], ax
+    xor     ax, ax
+
+
     mov     ax, [gameWidth]         ; Moves the game height to ax
     add     ax, 06h                 
     cmp     [player_x], ax          ; compares the player_y to the right border
@@ -440,13 +588,62 @@ playerRight:                        ; Moves player right
     mov     ax, [player_x]          ; gets x position
     add     ax, [player_speed]      ; adds speed to x position
     mov     [temp_player_x], ax     ; stores the new position in temp variable
-    ;call    checkPlayerColision     ; checks for colision
+    call    checkPlayerColision     ; checks for colision
 
     mov     [player_x], ax          ; Updates pos x of player
 
-    ret                             ; return
+    jmp     verifyMode
+
+playerSO:                           ; Moves player up
+
+    mov     al, [blue_color]               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     ax, [player_x] 
+    mov     [color_player_x], ax
+    xor     ax, ax
+    mov     ax, [player_y] 
+    mov     [color_player_y], ax
+    xor     ax, ax
+
+    mov     ax, 06h                 ; Moves 6 to ax
+    cmp     [player_y], ax          ; compares the player_y to the up border
+    jle      exitRoutine             ; if equal, return. Dont move
+
+    call    deletePlayer            ; Deletes player from screen
+
+    mov     ax, [player_y]          
+    add     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    
+    call    checkPlayerColision     ; checks if the movement causes a colition
+
+    mov     [player_y], ax          ; Updates pos y of player
+
+    mov     ax, [player_x]          
+    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_x], ax     ; stores the new position in the temp y
+
+    call    checkPlayerColision     ; checks if the movement causes a colition
+
+    mov     [player_x], ax          ; Updates pos y of player
+
+    jmp     verifyMode  
 
 playerLeft:                         ; Moves player left
+
+    ; Apenas entra actualiza el color al que deberia printear segun el movimiento
+    mov     al, [yellow_color]               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     ax, [player_x] 
+    mov     [color_player_x], ax
+    xor     ax, ax
+    mov     ax, [player_y] 
+    mov     [color_player_y], ax
+    xor     ax, ax
+
+
     mov     ax, 06h                 ; Moves the game height to ax
     cmp     [player_x], ax          ; compares the player_y to the right border
     jle      exitRoutine             ; if equal, return. Dont move
@@ -456,11 +653,113 @@ playerLeft:                         ; Moves player left
     mov     ax, [player_x]          
     sub     ax, [player_speed]      
     mov     [temp_player_x], ax     
-    ;call    checkPlayerColision     
+    call    checkPlayerColision     
 
     mov     [player_x], ax          
     
-    ret                             
+    jmp     verifyMode 
+    
+playerNE:                           ; Moves player up
+
+    mov     al, [blue_color]               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     ax, [player_x] 
+    mov     [color_player_x], ax
+    xor     ax, ax
+    mov     ax, [player_y] 
+    mov     [color_player_y], ax
+    xor     ax, ax
+    mov     ax, 06h                 ; Moves 6 to ax
+    cmp     [player_y], ax          ; compares the player_y to the up border
+    jle      exitRoutine             ; if equal, return. Dont move
+
+    call    deletePlayer            ; Deletes player from screen
+
+    mov     ax, [player_y]          
+    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    
+    call    checkPlayerColision     ; checks if the movement causes a colition
+
+    mov     [player_y], ax          ; Updates pos y of player
+
+    mov     ax, [player_x]          
+    add     ax, [player_speed]      ; substracts the speed to the player position in y to move up
+    mov     [temp_player_x], ax     ; stores the new position in the temp y
+
+    call    checkPlayerColision     ; checks if the movement causes a colition
+
+    mov     [player_x], ax          ; Updates pos y of player
+
+    jmp     verifyMode  
+
+
+verifyMode:
+
+    xor     ax,ax
+    mov     ax, [paintMode]         ; Verifica el estado de pintura
+    cmp     ax, 01h
+    je      paintInGame             ; Si estamos en modo de pintura, salta a la rutina correspondiente
+
+    mov     ax, [eraseMode]         ; Verifica el estado de borrado
+    cmp     ax, 01h
+    je      eraseInGame            ; Si estamos en modo de borrado, salta a la rutina correspondiente
+
+    ; Si no estamos en modo de pintura ni de borrado, simplemente movemos al jugador
+    ret
+
+togglePaintMode:
+    mov     ax, [paintMode]         ; Obtiene el valor actual de paintMode
+    xor     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
+    mov     [paintMode], ax         ; Actualiza paintMode
+
+    ret     
+
+
+paintInGame:
+
+    mov     cx, [color_player_x]       ; Obtén el tamaño del jugador (ancho o alto, asumiendo que es cuadrado)
+    mov     dx, [color_player_y]                  ; Establece el contador de bucle para el tamaño del jugador
+    jmp     paintLoop
+
+paintLoop:
+
+    mov     ah, 0ch                 ; Draw pixel
+    mov     al, [currentColor]      ; player color 
+    mov     bh, 00h                 ; Page
+    int     10h                     ; Interrupt
+    inc     cx                      ; cx + 1
+    mov     ax, cx                  
+    sub     ax, [color_player_x]          ; Substract player width with the current column
+    cmp     ax, [player_size]       ; compares if ax is greater than player size
+    jng     paintLoop         ; if not greater, draw next column
+    jmp     paintLoop2       ; Else, jump to next aux function
+
+
+
+paintLoop2:
+
+    mov     cx, [color_player_x]            ; reset columns
+    inc     dx                        ; dx +1
+    mov     ax, dx                  
+    sub     ax, [color_player_y]            ; Substract player height with the current row
+    cmp     ax, [player_size]         ; compares if ax is greater than player size
+    jng     paintLoop           ; if not greater, draw next row
+
+    ret                             ; Retorna de la función
+    
+eraseInGame:
+
+    mov     ax, [temp_player_x]     ; Obtén la posición x actual del jugador
+    mov     bx, [temp_player_y]     ; Obtén la posición y actual del jugador
+    mov     ah, 0ch                  ; Función 0Ch de la INT 10h (SetPixel)
+    mov     al, 00h                  ; Pinta de color negro (borra)
+    mov     bh, 00h                  ; Página de video
+    int     10h                      ; Llama a la interrupción de video para cambiar el color del píxel
+    
+
+    ret                             ; return
 
 ; ;-----------------------Render Goal-----------------------
 
@@ -517,31 +816,51 @@ playerLeft:                         ; Moves player left
 ;But if the color of the pixel is red, it means the player reached the goal
 
 
-; checkPlayerColision:
-;     push ax
+checkPlayerColision:
+     push ax
 
-;     mov cx, [temp_player_x]
-;     mov dx, [temp_player_y]
-;     mov ah, 0dh
-;     mov bh, 00h
-;     int 10h
+     mov cx, [temp_player_x]
+     mov dx, [temp_player_y]
+     mov ah, 0dh
+     mov bh, 00h
+     int 10h
 
-;     cmp al, [walls_color]
-;     je exitPlayerMovement
+     cmp al, [purple_color]
+     je  win
 
-;     cmp al, [goal_color]
-;     je goalReached
 
-;     pop ax
+     
 
-;     ret
+     ;cmp al, [blue_color]
+     ;je exitRoutine
 
-; goalReached:
+     ;cmp al, [red_color]
+     ;je exitRoutine
+
+     ;cmp al, [yellow_color]
+     ;je exitRoutine
+
+     ;cmp al, [goal_color]
+     ;je goalReached
+
+     pop ax
+
+     ret
+
+
+
+;goalReached:
 ;     mov    ax, 01h
 ;     cmp    ax, [level]
 ;     je     startLevel2
 ;     call   clearScreen
 ;     jmp    winnerLoop
+
+win:
+     call   clearScreen
+     jmp    winnerLoop
+
+
 
 
 exitPlayerMovement:
@@ -556,5 +875,5 @@ resetGame:
     call clearScreen
     jmp startGame
 
-exitRoutine:                        
-    ret                             
+exitRoutine:                       
+    ret                      
