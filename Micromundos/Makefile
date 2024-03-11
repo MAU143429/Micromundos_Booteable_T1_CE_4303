@@ -15,7 +15,5 @@ run:
 	
 	qemu-system-i386 bootgame.bin 
 	
-check: 
-	dd if=boot2.bin of=bootgame.img bs=512 seek=0 count=1 conv=notrunc
-	dd if=game.bin of=bootgame.img bs=512 seek=1 count=2 conv=notrunc
+
 

@@ -69,14 +69,17 @@ looser5 dw '   Presione ENTER para repetir    ', 0h
 ; In-Game Texts ...........................................................................................
 
 inGame1 dw '-------------------------------------', 0h
-inGame2 dw '-            Controles              -', 0h
+inGame2 dw '- Lvl.1      Controles              -', 0h
 inGame3 dw '- Mover-> Flechas y Q,E,A,D         -', 0h
 inGame4 dw '- Reset-> R | Terminar -> ESC       -', 0h
 inGame5 dw '- Pintar-> ESPACIO | Borrar -> Z    -', 0h
-inGame6 dw '-      Lvl.:', 0h
-inGame7 dw '1              -', 0h
-inGame8 dw '2              -', 0h
-inGame9 dw '-------------------------------------', 0h
+inGame6 dw '- Habilidad.:', 0h
+inGame7 dw 'Pintando              -', 0h
+inGame8 dw 'Borrando              -', 0h
+inGame9 dw 'Sin accion              -', 0h
+inGame10 dw '-------------------------------------', 0h
+
+
 
 
 textColor     dw 150h
@@ -118,6 +121,8 @@ winnerLoop:
 
 
 gameLoop:                           ; game logic loop
+
+    call drawInGameText
 
     call checkPlayerGameInput       ; function to check whether the keys have been pressed or not  
 
@@ -226,16 +231,21 @@ drawInGameText:
     mov     dl, 02h               
     call    drawText
 
-    mov     bx, inGame9             ;end * box
+    mov     bx, inGame10             ;end * box
     mov     dh, 12h          
     mov     dl, 02h               
     call    drawText
 
     ;checks what lvl is drawing to indicate it to the player
-    mov     bx, [level]
+    mov     bx, [paintMode]
     cmp     bx, 1
     je      drawInGameTextAux
-    jmp     drawInGameTextAux2
+
+    mov     bx, [eraseMode]
+    cmp     bx, 1
+    je      drawInGameTextAux2
+    
+    jmp     drawInGameTextAux3
 
 
     ret
@@ -254,6 +264,12 @@ drawInGameTextAux2:
     call    drawText
     ret
 
+drawInGameTextAux3:
+    mov     bx, inGame9                    
+    mov     dl, 17h
+    mov     dh, 11h              
+    call    drawText
+    ret
 
 drawWinnerMenu:                     ; Draws the text that is displayed once the player has won
     mov     bx, [textColor]         ; indicates text color
