@@ -74,9 +74,9 @@ inGame3 dw '- Mover-> Flechas y Q,E,A,D         -', 0h
 inGame4 dw '- Reset-> R | Terminar -> ESC       -', 0h
 inGame5 dw '- Pintar-> ESPACIO | Borrar -> Z    -', 0h
 inGame6 dw '- Habilidad.:', 0h
-inGame7 dw 'Pintando              -', 0h
-inGame8 dw 'Borrando              -', 0h
-inGame9 dw 'Sin accion              -', 0h
+inGame7 dw 'Pintando       -', 0h
+inGame8 dw 'Borrando       -', 0h
+inGame9 dw 'Sin accion     -', 0h
 inGame10 dw '-------------------------------------', 0h
 
 
