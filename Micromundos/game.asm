@@ -2,7 +2,6 @@ org  0x8000
 bits 16
 
 jmp startProgram
-nop
 
 ; Variables ------------------------------------------------------------------------------------------------
 
@@ -11,16 +10,19 @@ level dw 01h                        ; Nivel del juego
 paintMode dw 00h ; Flag para indicar si el jugador está en modo de pintura
 eraseMode   dw 00h   ; Estado de borrado (0: No borrar, 1: Borrar)
 currentColor dw 0Ah   ; Color actual (por defecto, 0Ah podría ser verde)
+lastColor dw 00h   ; Color actual (por defecto, 0Ah podría ser verde)
+secondsLeft dw 60     ; Inicializar con el número de segundos deseados (1 minuto)
+
 
 
 ; Constantes -----------------------------------------------------------------------------------------------
 
 width dw  140h                      ; screen width 320 p
 height dw  0c8h                     ; screen height 200 p
-purple_color equ 50h    ;; EStablece el color del verde hexadecimal
-red_color equ 30h    ;; EStablece el color del verde hexadecimal
-blue_color equ 70h    ;; EStablece el color del verde hexadecimal
-yellow_color equ 60h    ;; EStablece el color del verde hexadecimal
+purple_color dw 50h    ;; EStablece el color del verde hexadecimal
+red_color dw 90h    ;; EStablece el color del verde hexadecimal
+blue_color dw 70h    ;; EStablece el color del verde hexadecimal
+yellow_color dw 40h    ;; EStablece el color del verde hexadecimal
 
 
 gameHeight dw 46h ; Board height set to 100p
@@ -82,9 +84,9 @@ textColor     dw 150h
 
 ; GAME LOGIC ****************************************************************************************************
 startProgram:
-        call initDisplay    ; starts display
-        call clearScreen    ; clears display
-        jmp  menuLoop       
+    call initDisplay    ; starts display
+    call clearScreen    ; clears display
+    jmp  menuLoop       
 
 startGame:                          
     call    setLevel1               ; initialize lvl 1
@@ -357,12 +359,37 @@ renderPlayerAux2:
 
 
 deletePlayer:                       ; Funtion to erase player from screen
-    mov     al, 00h                 ; Move color black to al
+
+
+    mov     ax, [eraseMode]         ; Obtiene el valor actual de paintMode
+    cmp     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
+    je      deletePlayerAux2
+
+    mov     ax, [eraseMode]         ; Obtiene el valor actual de paintMode
+    cmp     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
+    jne      deletePlayerAux1
+   
+    ret
+
+
+deletePlayerAux1:
+    mov     al, [lastColor]         ; Move color black to al
     mov     [player_color], al      ; Updates player color to black 
     call    renderPlayer            ; Render player in color black
     mov     al, 0ah                 ; Set al as the original player color
     mov     [player_color], al      ; Updates player color to black
     ret                             ; return
+
+deletePlayerAux2:
+    mov     al, 00h                ; Move color black to al
+    mov     [player_color], al      ; Updates player color to black 
+    call    renderPlayer            ; Render player in color black
+    mov     al, 0ah                 ; Set al as the original player color
+    mov     [player_color], al      ; Updates player color to black
+    ret                             ; return
+
+
+
 
 checkPlayerGameInput:
     mov     ax, 00h                 ; Reset reg ax
@@ -404,7 +431,7 @@ makeMovements:
     je      playerNO               ; Pause the game
 
     cmp     al, 'z'                 ; If the key pushed is z
-    je      playerNO               ; Pause the game
+    je      toggleEraseMode               ; Pause the game
 
     cmp     al, 20h                 ; If the key pushed is space
     je      togglePaintMode         ; Change the paintmode flag
@@ -412,9 +439,8 @@ makeMovements:
     cmp     ah, 13h                 ; If the key pushed is r
     je      resetGame               ; Resets game
 
-    cmp     ah, 72h                 ; If the key pushed is R
-    je      resetGame               ; Resets game
-
+    cmp     al, 1Bh                 ; If the key pushed is esc
+    je      startProgram             
 
 
     ret
@@ -710,11 +736,36 @@ verifyMode:
     ret
 
 togglePaintMode:
+
+    mov     ax, [eraseMode]         ; Obtiene el valor actual de paintMode
+    cmp     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
+    jne      togglePaintModeAux
+
+    ret
+
+togglePaintModeAux:
+
     mov     ax, [paintMode]         ; Obtiene el valor actual de paintMode
     xor     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
     mov     [paintMode], ax         ; Actualiza paintMode
 
-    ret     
+    ret    
+
+toggleEraseMode:
+
+    mov     ax, [paintMode]         ; Obtiene el valor actual de paintMode
+    cmp     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
+    jne      toggleEraseModeAux
+
+    ret
+
+toggleEraseModeAux:
+
+    mov     ax, [eraseMode]         ; Obtiene el valor actual de paintMode
+    xor     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
+    mov     [eraseMode], ax         ; Actualiza paintMode
+
+    ret 
 
 
 paintInGame:
@@ -750,13 +801,12 @@ paintLoop2:
     ret                             ; Retorna de la función
     
 eraseInGame:
-
-    mov     ax, [temp_player_x]     ; Obtén la posición x actual del jugador
-    mov     bx, [temp_player_y]     ; Obtén la posición y actual del jugador
-    mov     ah, 0ch                  ; Función 0Ch de la INT 10h (SetPixel)
-    mov     al, 00h                  ; Pinta de color negro (borra)
-    mov     bh, 00h                  ; Página de video
-    int     10h                      ; Llama a la interrupción de video para cambiar el color del píxel
+    mov     al, 00h               ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al    ; Establece el color como el actual
+    xor     al, al
+    mov     cx, [color_player_x]       ; Obtén el tamaño del jugador (ancho o alto, asumiendo que es cuadrado)
+    mov     dx, [color_player_y]                  ; Establece el contador de bucle para el tamaño del jugador
+    jmp     paintLoop
     
 
     ret                             ; return
@@ -825,15 +875,14 @@ checkPlayerColision:
      mov bh, 00h
      int 10h
 
-     cmp al, [purple_color]
-     je  win
+    mov [lastColor], al  ; Establece el color como el actual
 
-
-     
+     ;cmp al, [purple_color]
+     ;je  exitRoutine
 
      ;cmp al, [blue_color]
      ;je exitRoutine
-
+     
      ;cmp al, [red_color]
      ;je exitRoutine
 
@@ -857,9 +906,8 @@ checkPlayerColision:
 ;     jmp    winnerLoop
 
 win:
-     call   clearScreen
-     jmp    winnerLoop
-
+    call   clearScreen
+    jmp    winnerLoop
 
 
 
