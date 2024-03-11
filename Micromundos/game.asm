@@ -5,178 +5,183 @@ jmp startProgram
 
 ; Variables ------------------------------------------------------------------------------------------------
 
-time db  00h                        ; tiempo que representa los FPS del programa
-level dw 01h                        ; Nivel del juego
-paintMode dw 00h ; Flag para indicar si el jugador está en modo de pintura
-eraseMode   dw 00h   ; Estado de borrado (0: No borrar, 1: Borrar)
-currentColor dw 0Ah   ; Color actual (por defecto, 0Ah podría ser verde)
-lastColor dw 00h   ; Color actual (por defecto, 0Ah podría ser verde)
-secondsLeft dw 60     ; Inicializar con el número de segundos deseados (1 minuto)
-
-
+time           db 00h   ; Tiempo que representa los fps del programa
+level          dw 01h   ; Nivel del juego                                                                      ELIMINAR
+lastColor      dw 00h   ; Color de la casilla en donde se encuentra
+paintMode      dw 00h   ; Flag para indicar si el jugador está en modo de pintura
+eraseMode      dw 00h   ; Flag para indicar si el jugador está en modo de borrador
+secondsLeft    dw 60    ; Inicializar con el número de segundos deseados (1 minuto)
+currentColor   dw 0Ah   ; Color actual (por defecto, verde)
 
 ; Constantes -----------------------------------------------------------------------------------------------
 
-width dw  140h                      ; screen width 320 p
-height dw  0c8h                     ; screen height 200 p
-purple_color dw 50h    ;; EStablece el color del verde hexadecimal
-red_color dw 90h    ;; EStablece el color del verde hexadecimal
-blue_color dw 70h    ;; EStablece el color del verde hexadecimal
-yellow_color dw 40h    ;; EStablece el color del verde hexadecimal
+width          dw 140h  ; El tamano del ancho de la pantalla 320 pixeles
+height         dw 0c8H  ; El tamano del alto de la pantalla 200 pixeles
+red_color      dw 90h   ; Establece el color del movimiento (NO, SE)
+blue_color     dw 70h   ; Establece el color del movimiento (NE, SO)
+yellow_color   dw 40h   ; Establece el color del movimiento (left, right)
+purple_color   dw 50h   ; EEstablece el color del movimiento (up, down)
+
+gameHeight     dw 46h   ; Define el tamano del alto area de juego 100 pixeles
+gameWidth      dw 12ah  ; Define el tamano del ancho area de juego 150 pixeles
 
 
-gameHeight dw 46h ; Board height set to 100p
-gameWidth dw 12ah ; Board width set to 150p
+gamePaused     dw 00h   ; Flag to know if the game is paused. 0 not paused. 1 paused                              ELIMINAR
+
+textColor      dw 150h  ; COlor del texto para los menus
+player_x       dw 03h   ; Posicion en x del jugador
+player_y       dw 0ah   ; Posicion en y del jugador 
+temp_player_x  dw 03h   ; Posicion temporal en x del jugador
+temp_player_y  dw 0ah   ; Posicion temporal en y del jugador
+color_player_x dw 03h   ; Posicion casilla en x del jugador (para pintar)
+color_player_y dw 0ah   ; Posicion casilla en y del jugador (para pintar)
+player_speed   dw 06h   ; Velocidad de movimiento del jugador
+player_color   dw 0ah   ; Color por defecto del jugador (tortuga)
+player_size    dw 05h   ; DImensiones del sprite de la tortuga (5x5)
+player_dir     dw 00h   ; Ultima direccion que tuvo el jugador
 
 
-gamePaused dw 00h ; Flag to know if the game is paused. 0 not paused. 1 paused
 
-; player
-
-player_x dw      03h   ; x position player 
-player_y dw      0ah   ; y position player 
-temp_player_x dw 03h   ; temp x position player
-temp_player_y dw 0ah   ; temp y position player
-color_player_x dw 03h   ; color x position player
-color_player_y dw 0ah   ; color y position player
-player_speed dw  06h   ; player speed
-player_color dw  0ah   ; player color
-player_size dw   05h   ; player dimensions 
-player_dir dw    00h   ; last direction of player (0 right, 1 down, 2 left, 3 up) 
-tortugaSprite db 0b00100, 0b11111, 0b01110, 0b11111, 0b00000
+tortugaSprite  db 0b00100, 0b11111, 0b01110, 0b11111, 0b00000                                                      ; NO HACE NADA
 
 
-; Texts ---------------------------------------------------------------------------------------------------
+; Texto del menu principal del juego ---------------------------------------------------------------------------
 
-menu1 dw '           ----------------         ', 0h
-menu2 dw '           - MICRO-MUNDOS -         ', 0h
-menu3 dw '           -  BIENVENIDO  -         ', 0h
-menu4 dw '           ----------------         ', 0h
-menu5 dw '   Presione ENTER para continuar    ', 0h
+menu1    dw '           ----------------         ', 0h
+menu2    dw '           - MICRO-MUNDOS -         ', 0h
+menu3    dw '           -  BIENVENIDO  -         ', 0h
+menu4    dw '           ----------------         ', 0h
+menu5    dw '   Presione ENTER para continuar    ', 0h
 
-winner1 dw '          ---------------           ', 0h
-winner2 dw '          - FELICIDADES -           ', 0h
-winner3 dw '          -   GANASTE   -           ', 0h
-winner4 dw '          ---------------           ', 0h
-winner5 dw '   Presione ENTER para repetir    ', 0h
+winner1  dw '          ---------------           ', 0h
+winner2  dw '          - FELICIDADES -           ', 0h
+winner3  dw '          -   GANASTE   -           ', 0h
+winner4  dw '          ---------------           ', 0h
+winner5  dw '   Presione ENTER para repetir    ', 0h
 
-looser1 dw '          ---------------           ', 0h
-looser2 dw '          -   PERDISTE  -           ', 0h
-looser3 dw '          -      :v     -           ', 0h
-looser4 dw '          ---------------           ', 0h
-looser5 dw '   Presione ENTER para repetir    ', 0h
+loser1   dw '          ---------------           ', 0h
+loser2   dw '          -   PERDISTE  -           ', 0h
+loser3   dw '          -      :v     -           ', 0h
+loser4   dw '          ---------------           ', 0h
+loser5   dw '   Presione ENTER para repetir    ', 0h
 
-; In-Game Texts ...........................................................................................
+; Menu de controles In-Game --------------------------------------------------------------------------------------
 
-inGame1 dw '-------------------------------------', 0h
-inGame2 dw '- Lvl.1      Controles              -', 0h
-inGame3 dw '- Mover-> Flechas y Q,E,A,D         -', 0h
-inGame4 dw '- Reset-> R | Terminar -> ESC       -', 0h
-inGame5 dw '- Pintar-> ESPACIO | Borrar -> Z    -', 0h
-inGame6 dw '- Habilidad.:', 0h
-inGame7 dw 'Pintando       -', 0h
-inGame8 dw 'Borrando       -', 0h
-inGame9 dw 'Sin accion     -', 0h
+inGame1  dw '-------------------------------------', 0h
+inGame2  dw '- Lvl.1      Controles              -', 0h
+inGame3  dw '- Mover-> Flechas y Q,E,A,D         -', 0h
+inGame4  dw '- Reset-> R | Terminar -> ESC       -', 0h
+inGame5  dw '- Pintar-> ESPACIO | Borrar -> Z    -', 0h
+inGame6  dw '- Habilidad.:', 0h
+inGame7  dw 'Pintando       -', 0h
+inGame8  dw 'Borrando       -', 0h
+inGame9  dw 'Sin accion     -', 0h
 inGame10 dw '-------------------------------------', 0h
 
 
+; Logica del juego  ****************************************************************************************************
 
 
-textColor     dw 150h
-
-
-; GAME LOGIC ****************************************************************************************************
 startProgram:
-    call initDisplay    ; starts display
-    call clearScreen    ; clears display
-    jmp  menuLoop       
+    call initDisplay                ; Llama al inicializador de la pantalla
+    call clearScreen                ; Llama al limpiador de pantalla
+    jmp  menuLoop                   ; Salta al bucle del menu principal
+
 
 startGame:                          
-    call    setLevel1               ; initialize lvl 1
-    call    clearScreen             ; paints the screen black 
-    call    drawInGameText          ; function to display the controls in game
-    jmp     gameLoop                
+    call    setLevel1               ; Establece el nivel 1 (deberia hacer que respawnee random)                                                 ELIMINAR
+    call    clearScreen             ; Llama al limpiador de pantall
+    call    drawInGameText          ; Dibuja el menu de controles dentro del juego
+    jmp     gameLoop                ; Salta al bucle de juego principal
 
-initDisplay:                        ;video mode interruption to draw on screen
-    mov ah, 00h     
-    mov al, 13h     
-    int 10h        
+
+initDisplay:                        
+    mov ah, 00h                     ; Establece el modo de video 
+    mov al, 13h                     ; llamando a la interrupcion 
+    int 10h                         ; 10h con el codigo 13h de video VGA
     ret
 
-menuLoop:                           ; Menu cycle
+menuLoop:                           
 
-    call    checkPlayerMenuAction   ; checks if the player has pressed space
+    call    checkPlayerMenuAction   ; Revisa si el usuario presiono ENTER para empezar el juego
 
-    call    drawTextMenu            ; draws menu on screen
+    call    drawTextMenu            ; Dibuja el menu principal en pantalla
 
-    jmp     menuLoop                ; stays in the cycle if nothing happens
+    jmp     menuLoop                ; Se llama asi misma hasta que se detecte el ENTER
 
 winnerLoop: 
 
-    call    checkPlayerMenuAction   ; Checks if the player pressed space to play again
+    call    checkPlayerMenuAction   ; Verifica si el jugador presiono el ENTER para jugar de nuevo
     
-    call    drawWinnerMenu          ; Draws winning screen
+    call    drawWinnerMenu          ; Dibuja el menu de ganador de la partida
 
-    jmp     winnerLoop              ; stays in the cycle if nothing happens
+    jmp     winnerLoop              ; Se llama asi misma hasta que se detecte el ENTER
 
 
-gameLoop:                           ; game logic loop
+gameLoop:                           
 
-    call drawInGameText
+    call    drawInGameText          ; Dibuja el menu de controles dentro del juego principal
 
-    call checkPlayerGameInput       ; function to check whether the keys have been pressed or not  
+    call    checkPlayerGameInput    ; Revisa contanstemente las teclas para detectar cualquier movimiento del jugador en juego 
 
-    call renderPlayer               ; function to draw the player constantly
+    call    renderPlayer            ; Permite dibujar al jugador en la posicion donde se encuentre
 
-    jmp     gameLoop                ; stays in the loop
+    jmp     gameLoop                ; Se llama asi misma hasta que ocurra alguna accion por parte del usuario
 
-; Render functions **************************************************************************************
 
-clearScreen:                        ; paints black the display
-    mov     cx, 00h                 ; starting x
-    mov     dx, 00h                 ; starting y
+
+; Funciones de renderizado del jugador y pintado ------------------------------------------------------------------------------*
+
+clearScreen:
+
+    mov     cx, 00h                 ; Establece la posicion inicial x de la pantalla
+    mov     dx, 00h                 ; Establece la posicion inicial y de la pantalla
     jmp     clearScreenAux          
+
 
 clearScreenAux:
     mov     ah, 0ch                 
     mov     al, 00h                 
     mov     bh, 00h
-    int     10h                     ; interruption that draws a black pixel
-    inc     cx                      ; increases x to draw horizontaly
-    cmp     cx, [width]             
+    int     10h                     ; Llama a la interrupcion para que se pinte de negro el fondo
+    inc     cx                      ; Va incrementando el valor en la horizontal de la pantalla
+    cmp     cx, [width]             ; Compara si ya se llego al ancho maximo sino sigue hasta pintar todo
     jng     clearScreenAux          
     jmp     clearScreenAux2         
 
+
 clearScreenAux2:                  
-    mov     cx, 00h                 ; restarts x
-    inc     dx                      ; increases y to draw in the next line
-    cmp     dx, [height]            
+    mov     cx, 00h                 ; Reinicia la posicion en x
+    inc     dx                      ; Incrementa en 1 la y para escribir en la siguiente linea
+    cmp     dx, [height]            ; Compara si ya se llego a la altura maxima sino sigue hasta pintar todo
     jng     clearScreenAux          
     ret                             
 
 
-checkPlayerMenuAction:              ; Checks if a key has been pressed in the menu
+checkPlayerMenuAction:             
     mov     ah, 01h                
-    int     16h                     ; interruption to get keyboard state
-    jz      exitRoutine             ; if nothing is pressed, returns
+    int     16h                     ; Llama a la interrupcion que detecta movimiento en el teclado
+    jz      exitRoutine             ; Si no se presiona nada se retorna al bucle del juego principal
     mov     ah, 00h                 
-    int     16h                     ; interruption to read the key that was pressed
-    cmp     al, 0Dh                 ; compares if the key pressed was the enter
-    je      startGame               ; starts game if space was pressed
+    int     16h                     ; Llama a la interrupcion de movimiento en el teclado nuevamente
+    cmp     al, 0Dh                 ; Verifica si la tecla presionada es ENTER
+    je      startGame               ; Si es asi entonces inicia el juego
 
-    ret
+    ret                             ; Si ningun escenario pasa, devuelve al bucle prinicipal
 
 
-drawTextMenu:                       ; Draws the text menu
-    mov     bx, [textColor]         ; sets the color of the pixel to be drawn
 
-    mov     bx, menu1               ; sets the text to be drawn
-    mov     dh, 07h                 ; y coordinate in pixels
-    mov     dl, 02h                 ; x coordinate in pixels
-    call    drawText                ; calls the function to draw the text
+
+drawTextMenu:                       
+    mov     bx, [textColor]         ; Establece el color del texto para pintar el Menu Principal
+
+    mov     bx, menu1               ; Selecciona el texto que quiere escribir
+    mov     dh, 07h                 ; Selecciona la coordenada y en pixeles donde se escribira
+    mov     dl, 02h                 ; Selecciona la coordenada x en pixeles donde se escribira
+    call    drawText                ; Llama a la funcion que lo coloca en pantalla
 
     mov     bx, menu2           
-    inc     dh                      ; increases y to draw the next text
+    inc     dh                      ; Se aumenta el valor de y para seguir pintando los demas textos en la linea siguiente.
     mov     dl, 02h                 
     call    drawText                
 
@@ -199,90 +204,98 @@ drawTextMenu:                       ; Draws the text menu
 
 
 drawInGameText:
-    mov     bx, [textColor]         ; Sets the pixel colors
+    mov     bx, [textColor]         ; Establece el color del texto para pintar el texto In Game
 
-    mov     bx, inGame1             ;start * box
-    mov     dh, 0ch                 ;y text coordinate
-    mov     dl, 02h                 ;x text coordinate               
-    call    drawText
+    mov     bx, inGame1             ; Selecciona el texto que quiere escribir
+    mov     dh, 0ch                 ; Selecciona la coordenada y en pixeles donde se escribira
+    mov     dl, 02h                 ; Selecciona la coordenada X en pixeles donde se escribira               
+    call    drawText                ; Llama a la funcion que lo coloca en pantalla
 
-    mov     bx, inGame2             ;controls text    
+    mov     bx, inGame2             ; Texto que indica el nivel y el titulo de controles   
     inc     dh            
     mov     dl, 02h               
     call    drawText   
 
-    mov     bx, inGame3             ;movement text       
+    mov     bx, inGame3             ; Indica los controles de movimiento del juego      
     inc     dh            
     mov     dl, 02h               
     call    drawText
 
-    mov     bx, inGame4             ;restart text
+    mov     bx, inGame4             ; Indica los controles para reiniciar y volver a menu principal
     inc     dh            
     mov     dl, 02h               
     call    drawText
 
-    mov     bx, inGame5             ;pause text
+    mov     bx, inGame5             ; Indica los controles para activar las diferentes habilidades (pintar, borrar)
     inc     dh            
     mov     dl, 02h               
     call    drawText
 
-    mov     bx, inGame6             ;Level text
+    mov     bx, inGame6             ; Indica en tiempo real cual habilidad esta activada
     inc     dh            
     mov     dl, 02h               
     call    drawText
 
-    mov     bx, inGame10             ;end * box
+    mov     bx, inGame10             ; Decoracion para cerrar la caja de controles
     mov     dh, 12h          
     mov     dl, 02h               
     call    drawText
 
-    ;checks what lvl is drawing to indicate it to the player
-    mov     bx, [paintMode]
+    ;Verifica la habilidad que esta en ejecucion para indicarla en pantalla
+
+    mov     bx, [paintMode]          ; Revisa si esta en modo pintando
     cmp     bx, 1
     je      drawInGameTextAux
 
-    mov     bx, [eraseMode]
+    mov     bx, [eraseMode]          ; Revisa si esta en modo pintando
     cmp     bx, 1
     je      drawInGameTextAux2
     
-    jmp     drawInGameTextAux3
+    jmp     drawInGameTextAux3       ; Ejecuta el modo sin habilidad en caso de no estar en ninguna de las mencionadas
 
 
     ret
 
+
 drawInGameTextAux:
-    mov     bx, inGame7                      
+
+    mov     bx, inGame7              ; Dibuja el texto en pantalla indicando que esta pintando     
     mov     dl, 17h
     mov     dh, 11h               
     call    drawText
     ret
 
 drawInGameTextAux2:
-    mov     bx, inGame8                    
+
+    mov     bx, inGame8              ; Dibuja el texto en pantalla indicando que esta borrando   
     mov     dl, 17h
     mov     dh, 11h              
     call    drawText
     ret
 
 drawInGameTextAux3:
-    mov     bx, inGame9                    
+
+    mov     bx, inGame9              ; Dibuja el texto en pantalla indicando que esta sin habilidades        
     mov     dl, 17h
     mov     dh, 11h              
     call    drawText
     ret
 
-drawWinnerMenu:                     ; Draws the text that is displayed once the player has won
-    mov     bx, [textColor]         ; indicates text color
-    inc     bx                      ; increases the number of the color to give it a rainbow appearance
-    mov     [textColor], bx         ; saves the new color number
 
-    mov     bx, winner1             ; selects the text to display
-    mov     dh, 07h                 ; y coordinate
-    mov     dl, 02h                 ; x coordinate
-    call    drawText                ; draws the text
+drawWinnerMenu:                     ; Se encarga de dibujar el menu cuando el jugador gano la partida
 
-    mov     bx, winner2             ; changes the text message
-    inc     dh                      ; increses y to draw under the previous message
+    mov     bx, [textColor]         ; Se establece el color del texto 
+    inc     bx                      ; Incrementa el color en 1 para que de un efecto de arcoiris y que la animacion sea cambiar de color
+    mov     [textColor], bx         ; Guarda el nuevo color
+
+    mov     bx, winner1             ; Selecciona el texto que quiere escribir
+    mov     dh, 07h                 ; Selecciona la coordenada y en pixeles donde se escribira
+    mov     dl, 02h                 ; Selecciona la coordenada X en pixeles donde se escribira 
+    call    drawText                ; Llama a la funcion que lo coloca en pantalla
+
+
+    mov     bx, winner2             ; Cambia a la siguiente linea de texto
+    inc     dh                      ; Incrementa el valor de y para dibujar la nueva linea justo debajo de la otra
     mov     dl, 02h                 
     call    drawText                
 
@@ -303,441 +316,464 @@ drawWinnerMenu:                     ; Draws the text that is displayed once the 
 
     ret
 
-drawText:                           ; Draws text on screen
-    cmp     byte [bx],0             ; checks if the draw is complete
-    jz      finishDraw              ; returns when the draw is finished
-    jmp     drawChar                ; draws next character
+drawText:                           ; Esta funcion se encarga de dibujar texto en pantalla
 
-drawChar:                           ; Draws a character on screen
-    push    bx                      ; pushes the character on bx
-    mov     ah, 02h                 ; indicates that a character is going to be printed on screen
-    mov     bh, 00h                 ; indicates that its going to be printed in the current page
-    int     10h                     ; calls the interruption
-    pop     bx                      ; pops the character into bx
+    cmp     byte [bx],0             ; Verifica si el texto ya se termino de dibujar en pantalla
+    jz      finishDraw              ; Vuelve al bucle principal si ya termino
+    jmp     drawChar                ; Sino sigue al siguiente caracter
+
+
+drawChar:                           ; Permite dibujar un caracter en pantalla
+
+    push    bx                      ; Agrega el valor del caracter a la pila de dibujo
+    mov     ah, 02h                 ; Indica que se va a pintar un caracter en pantalla
+    mov     bh, 00h                 ; Indica que el caracter se va a pintar en la pantalla actual
+    int     10h                     ; Llama a la interrupcion de pintar en pantalla
+    pop     bx                      ; Saca al caracter de la pila
 
     push    bx                      
-    mov     al, [bx]                ; saves the current character
-    mov     ah, 0ah                 ; Mueve a ah un 10
+    mov     al, [bx]                ; Guarda el caracter actual que se va a pintar
+    mov     ah, 0ah                 ; Se mueve 10 unidades 
     mov     bh, 00h                 
-    mov     bl, [textColor]         ; sets the color of the text
-    mov     cx, 01h                 ; indicates that only one character will be printed
-    int     10h                     ; calls the interruption
+    mov     bl, [textColor]         ; Establece el color que va a tener el caracter que se dibujara
+    mov     cx, 01h                 ; Indica que solo un caracter va a ser dibujado
+    int     10h                     ; Llama a la interrupcion de dibujo en pantalla
     pop     bx                      
 
-    inc     bx                      ; reads the next byte
+    inc     bx                      ; Incrementa en 1 para leer el siguiente caracter
     inc     dl                      
-    jmp     drawText                ; jumps back to the starting cycle
+    jmp     drawText                ; Devuelve al ciclo de dibujado principal
 
-finishDraw:                         ; Returns once the text is written
+
+
+finishDraw:                         ; Permite volver al ciclo principal cuando el caracter ya se pinto
     ret                             
 
 
 setLevel1:                          
     mov     ax, 01h                 
-    mov     [level], ax                   ; Sets the player in level 1
+    mov     [level], ax              ; SCambia el valor de la variable nivel a 1                                                              MODIFICAR
 
     mov     ax, 03h                       
-    mov     [player_x], ax                ; player x starting coordinate
-    mov     [temp_player_x], ax           ; starts the temporal x in the same place so the player wont move unintentionally
-    mov     ax, 0ah                       
-    mov     [player_y], ax                ; player y starting coordinate
-    mov     [temp_player_y], ax           ; starts the temporal y in the same place so the player wont move unintentionally
+    mov     [player_x], ax           ; Indica la coordenada donde el jugador comienza en x
+    mov     [temp_player_x], ax      ; Guarda la misma coordenada en el temp x
+    mov     ax, 0ah                      
+    mov     [player_y], ax           ; Indica la coordenada donde el jugador comienza en y
+    mov     [temp_player_y], ax      ; Guarda la misma coordenada en el temp y
 
     mov     ax, 00h                       
-    mov     [gamePaused], ax              ; Sets the game to unpaused
+    mov     [gamePaused], ax         ; Quita la pausa del juego                                                                                ELIMINAR
     ret
 
-renderPlayer:
-    mov     cx, [player_x]            ; current x
-    mov     dx, [player_y]            ; current y
+
+renderPlayer:                        ; Permite dibujar al jugador en pantalla.
+    mov     cx, [player_x]           ; Posicion x donde sera dibujado
+    mov     dx, [player_y]           ; Posicion y donde sera dibujado
     jmp     renderPlayerAux           
 
 renderPlayerAux:
-     mov     ah, 0ch                 ; Draw pixel
-     mov     al, [player_color]      ; player color 
-     mov     bh, 00h                 ; Page
-     int     10h                     ; Interrupt
-     inc     cx                      ; cx + 1
-     mov     ax, cx                  
-     sub     ax, [player_x]          ; Substract player width with the current column
-     cmp     ax, [player_size]       ; compares if ax is greater than player size
-     jng     renderPlayerAux         ; if not greater, draw next column
-     jmp     renderPlayerAux2        ; Else, jump to next aux function
+     mov    ah, 0ch                  ; Indica que se va a dibujar un pixel en pantalla
+     mov    al, [player_color]       ; Indica el color del pixel (color del jugador)
+     mov    bh, 00h                  ; Indica en que pagina lo va a dibujar (predeterminada)
+     int    10h                      ; Llama a la interrupcion para dibujar en pantalla
+     inc    cx                       ; Incremente en 1 el cx
+     mov    ax, cx                  
+     sub    ax, [player_x]           ; Resta 1 a la posicion del jugador para dibujar el siguiente pixel del sprite (dibujando anchura)
+     cmp    ax, [player_size]        ; Verifica si el ax es mas grande que el tamano del jugador
+     jng    renderPlayerAux          ; Si aun no es mas grande sigue dibujando la siguiente columna
+     jmp    renderPlayerAux2         ; Sino salta a la siguiente funcion de dibujo (dibujar altura del sprite)
 
 renderPlayerAux2:
-    mov     cx, [player_x]            ; reset columns
-    inc     dx                        ; dx +1
+    mov     cx, [player_x]           ; Restablece el valor de las columnas
+    inc     dx                       ; Aumenta en la fila
     mov     ax, dx                  
-    sub     ax, [player_y]            ; Substract player height with the current row
-    cmp     ax, [player_size]         ; compares if ax is greater than player size
-    jng     renderPlayerAux           ; if not greater, draw next row
-    ret                               ; Else, return
+    sub     ax, [player_y]           ; Resta 1 a la posicion del jugador para dibujar el siguiente pixel del sprite (dibujando altura)
+    cmp     ax, [player_size]        ; Verifica si el ax es mas grande que el tamano del jugador
+    jng     renderPlayerAux          ; Si aun no es mas grande sigue dibujando la siguiente fila
+    ret                              ; Sino vuelve al bucle principal
 
 
-deletePlayer:                       ; Funtion to erase player from screen
+deletePlayer:                        ; Funcion que elimina al jugador de la pantalla
 
 
-    mov     ax, [eraseMode]         ; Obtiene el valor actual de paintMode
-    cmp     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
+    mov     ax, [eraseMode]          ; Obtiene el valor actual de paintMode
+    cmp     ax, 01h                  ; Invierte el valor (0 a 1 o 1 a 0)
     je      deletePlayerAux2
 
-    mov     ax, [eraseMode]         ; Obtiene el valor actual de paintMode
-    cmp     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
-    jne      deletePlayerAux1
+    jmp      deletePlayerAux1
    
-    ret
+    ret                              ; Vuelve al bucle principal
 
 
-deletePlayerAux1:
-    mov     al, [lastColor]         ; Move color black to al
-    mov     [player_color], al      ; Updates player color to black 
-    call    renderPlayer            ; Render player in color black
-    mov     al, 0ah                 ; Set al as the original player color
-    mov     [player_color], al      ; Updates player color to black
-    ret                             ; return
+deletePlayerAux1:                   ; Modo no borrador, pasa encima de una casilla pintada
 
-deletePlayerAux2:
-    mov     al, 00h                ; Move color black to al
-    mov     [player_color], al      ; Updates player color to black 
-    call    renderPlayer            ; Render player in color black
-    mov     al, 0ah                 ; Set al as the original player color
-    mov     [player_color], al      ; Updates player color to black
-    ret                             ; return
+    mov     al, [lastColor]         ; Establece el color que a casilla tenia antes de llegar ahi el jugador
+    mov     [player_color], al      ; Actualiza el color del jugador con el de la casilla
+    call    renderPlayer            ; Llama a renderizar al jugador con ese color, para dejar la casilla como estaba
+    mov     al, 0ah                 ; Se devuelve al color original del jugador
+    mov     [player_color], al      ; Lo actualiza en la variable
+    ret                             ; Vuelve al ciclo principal
+
+deletePlayerAux2:                   ; Modo borrador
+
+    mov     al, 00h                 ; Guarda el color del fondo (negro)
+    mov     [player_color], al      ; Establece el color negro como el del jugador
+    call    renderPlayer            ; Dibuja la casilla del color del fondo
+    mov     al, 0ah                 ; SSe devuelve al color original del jugador
+    mov     [player_color], al      ; Lo actualiza en la variable
+
+    ret                             ; Vuelve al ciclo principal
 
 
+checkPlayerGameInput:               ; Verifica cualquier accion del jugador
 
+    mov     ax, 00h                 ; Restablece el valor del registro en 0
+    cmp     ax, [gamePaused]        ; Si el juego no esta pausado revisa los movimientos
+    je      makeMovements           ; Salta al chequeador de movimientos
 
-checkPlayerGameInput:
-    mov     ax, 00h                 ; Reset reg ax
-    cmp     ax, [gamePaused]        ; move the gamePaused Flag to ax
-    je      makeMovements           ; If the game is not paused, player can move 
+makeMovements:                      ; Funcion que se encarga de ejecutar acciones segun el movimiento que se detecte
 
-makeMovements:
-    mov     ah, 01h                 ; gets keyboard status
-    int     16h                     ; interrupt 
+    mov     ah, 01h                 ; Indica que se va a leer una entrada de teclado
+    int     16h                     ; Ejecuta la interrupcion de teclado
 
-    jz      exitRoutine             ; if not pushed key, exit
+    jz      exitRoutine             ; Si no se detecta ninguna tecla vuelve al bucle principal
 
-    mov     ah, 00h                 ; Read key
-    int     16h                     ; interrupt
+    mov     ah, 00h                 ; Detecta que se presiono una tecla
+    int     16h                     ; Ejecuta la interrupcion para saber el valor de la tecla presionada
 
-    cmp     ah, 48h                 ; If the key pushed is arrow up
-    je      playerUp                ; Moves player up
+    cmp     ah, 48h                 ; Si la tecla es : Flecha arriba
+    je      playerUp                ; Mueve al jugador hacia arriba
 
     
-    cmp     ah, 50h                 ; If the key pushed is arrow down
-    je      playerDown              ; Moves player down
+    cmp     ah, 50h                 ; Si la tecla es : Flecha abajo
+    je      playerDown              ; Mueve al jugador hacia abajo
 
-    cmp     ah, 4dh                 ; If the key pushed is arrow right 
-    je      playerRight             ; Moves player right
+    cmp     ah, 4dh                 ; Si la tecla es : Flecha derecha
+    je      playerRight             ; Mueve al jugador hacia derecha
 
-    cmp     ah, 4bh                 ; If the key pushed is arrow left 
-    je      playerLeft              ; Moves player left
+    cmp     ah, 4bh                 ; Si la tecla es : Flecha izquierda
+    je      playerLeft              ; Mueve al jugador hacia izquierda
 
-    cmp     al, 'q'                 ; If the key pushed is q
-    je      playerSE               ; Pause the game
+    cmp     al, 'q'                 ; Si la tecla es : q
+    je      playerSE                ; Mueve al jugador hacia el Sur-Este
 
-    cmp     al, 'a'                 ; If the key pushed is a
-    je      playerNE                ; Pause the game
+    cmp     al, 'a'                 ; Si la tecla es : a
+    je      playerNE                ; Mueve al jugador hacia el Nor-Este
 
-    cmp     al, 'e'                 ; If the key pushed is e
-    je      playerSO               ; Pause the game
+    cmp     al, 'e'                 ; Si la tecla es : e
+    je      playerSO                ; Mueve al jugador hacia el Sur-Oeste
 
-    cmp     al, 'd'                 ; If the key pushed is d
-    je      playerNO               ; Pause the game
+    cmp     al, 'd'                 ; Si la tecla es : d
+    je      playerNO                ; Mueve al jugador hacia el Nor-Oeste
 
-    cmp     al, 'z'                 ; If the key pushed is z
-    je      toggleEraseMode               ; Pause the game
+    cmp     al, 'z'                 ; Si la tecla es :z
+    je      toggleEraseMode         ; Activa/Desactiva el modo de borrado
 
-    cmp     al, 20h                 ; If the key pushed is space
-    je      togglePaintMode         ; Change the paintmode flag
+    cmp     al, 20h                 ; Si la tecla es : Space
+    je      togglePaintMode         ; Activa/Desactiva el modo de pintado
 
-    cmp     ah, 13h                 ; If the key pushed is r
-    je      resetGame               ; Resets game
+    cmp     ah, 13h                 ; Si la tecla es : r
+    je      resetGame               ; Reinicia el juego
 
-    cmp     al, 1Bh                 ; If the key pushed is esc
-    je      startProgram             
+    cmp     al, 1Bh                 ; Si la tecla es : esc
+    je      startProgram            ; EL juego termina y vuelve al menu principal
 
 
     ret
 
-playerUp:                           ; Moves player up
+playerUp:                           ; Mueve al jugador hacia arriba
 
-    ; Apenas entra actualiza el color al que deberia printear segun el movimiento
-    mov     al, [purple_color]               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+    mov     al, [purple_color]      ; Guarda el color del cual se debe pintar el movimiento
+    mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
     xor     al, al
     mov     ax, [player_x] 
-    mov     [color_player_x], ax
+    mov     [color_player_x], ax    ; Guarda las posiones de x de la casilla para pintar en ella
     xor     ax, ax
     mov     ax, [player_y] 
-    mov     [color_player_y], ax
+    mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
     xor     ax, ax
 
 
-    mov     ax, 06h                 ; Moves 6 to ax
-    cmp     [player_y], ax          ; compares the player_y to the up border
-    jle      exitRoutine             ; if equal, return. Dont move
+    mov     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
+    jle      exitRoutine            ; Si lo tocaria entonces no lo mueve
 
-    call    deletePlayer            ; Deletes player from screen
+    call    deletePlayer            ; Sino elimina al jugador de la posicion para moverlo
 
     mov     ax, [player_y]          
-    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    sub     ax, [player_speed]      ; Resta la velocidad del jugador para poder moverlo arriba
+    mov     [temp_player_y], ax     ; Guarda el nuevo valor de y en la variable temporal
     
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento                                                         MODIFICAR (REVISA SI GANA)
 
-    mov     [player_y], ax          ; Updates pos y of player
+    mov     [player_y], ax          ; Actualiza la posicion del jugador en y
 
-    jmp verifyMode
+    jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
 
 
-playerNO:                           ; Moves player NO
+playerNO:                           ; Mueve al jugador hacia  Nor-Oeste
 
-    mov     al, [red_color]               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+    mov     al, [red_color]         ; Guarda el color del cual se debe pintar el movimiento     
+    mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
     xor     al, al
     mov     ax, [player_x] 
-    mov     [color_player_x], ax
+    mov     [color_player_x], ax    ; Guarda las posiones de x de la casilla para pintar en ella
     xor     ax, ax
     mov     ax, [player_y] 
-    mov     [color_player_y], ax
+    mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
     xor     ax, ax
 
-    mov     ax, 06h                 ; Moves 6 to ax
-    cmp     [player_y], ax          ; compares the player_y to the up border
-    jle      exitRoutine             ; if equal, return. Dont move
+    mov     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
+    jle      exitRoutine            ; Si lo tocaria entonces no lo mueve
+
 
     xor     ax,ax
 
-    mov     ax, 06h                 ; Moves 6 to ax
-    cmp     [player_y], ax          ; compares the player_y to the up border
-    jle      exitRoutine             ; if equal, return. Dont move
+    mov     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
+    jle      exitRoutine            ; Si lo tocaria entonces no lo mueve
 
-    call    deletePlayer            ; Deletes player from screen
+    call    deletePlayer            ; Sino elimina al jugador de la posicion para moverlo
 
     mov     ax, [player_y]          
-    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    sub     ax, [player_speed]      ; Resta la velocidad del jugador para poder moverlo arriba
+    mov     [temp_player_y], ax     ; Guarda el nuevo valor de y en la variable temporal
     
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento   
 
-    mov     [player_y], ax          ; Updates pos y of player
+    mov     [player_y], ax          ; Actualiza la posicion del jugador en y
+
 
 
     mov     ax, [player_x]          
-    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_x], ax     ; stores the new position in the temp y
+    sub     ax, [player_speed]      ; Resta la velocidad del jugador para poder moverlo izquierda
+    mov     [temp_player_x], ax     ; Guarda el nuevo valor de x en la variable temporal
 
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento
 
-    mov     [player_x], ax          ; Updates pos y of player
+    mov     [player_x], ax          ; Actualiza la posicion del jugador en x
 
    
-    jmp verifyMode
+    jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
 
 
     
-playerDown:                         ; Moves player down
+playerDown:                         ; Mueve al jugador hacia abajo
 
-
-; Apenas entra actualiza el color al que deberia printear segun el movimiento
-    mov     al, [purple_color]               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+    mov     al, [purple_color]      ; Guarda el color del cual se debe pintar el movimiento  
+    mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
     xor     al, al
     mov     ax, [player_x] 
-    mov     [color_player_x], ax
+    mov     [color_player_x], ax    ; Guarda las posiones de x de la casilla para pintar en ella
     xor     ax, ax
     mov     ax, [player_y] 
-    mov     [color_player_y], ax
+    mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
     xor     ax, ax
 
-    mov     ax, [gameHeight]                 ; Moves the game height to ax
-    add     ax, 06h                 ; add 6 to ax 
-    cmp     [player_y], ax          ; compares the player_y to the up border
-    jge      exitRoutine            ; if equal, return. Dont move
 
-    call    deletePlayer            ; Deletes player from screen
+
+    mov     ax, [gameHeight]        ; Mueve la altura del juego a ax
+    add     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
+    jge      exitRoutine            ; Si lo tocaria entonces no lo mueve
+
+
+    call    deletePlayer            ; Sino elimina al jugador de la posicion para moverlo
 
     mov     ax, [player_y]          
-    add     ax, [player_speed]      ; adds the speed to the player position in y to move down
-    mov     [temp_player_y], ax     
-    call    checkPlayerColision     
-
-    mov     [player_y], ax          ; Updates pos y of player
-
-    jmp verifyMode
+    add     ax, [player_speed]      ; Suma la velocidad del jugador para poder moverlo abajo
+    mov     [temp_player_y], ax     ; Guarda el nuevo valor de y en la variable temporal 
 
 
-playerSE:                           ; Moves player up
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento  
 
-    ; Apenas entra actualiza el color al que deberia printear segun el movimiento
-    mov     al, [red_color]               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+    mov     [player_y], ax          ; Actualiza la posicion del jugador en y
+
+    jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
+
+
+
+playerSE:                           ; Mueve al jugador hacia  Sur-Este
+
+    mov     al, [red_color]         ; Guarda el color del cual se debe pintar el movimiento 
+    mov     [currentColor], al      ; Establece el color como el actual
     xor     al, al
-    mov     ax, [player_x] 
-    mov     [color_player_x], ax
+    mov     ax, [player_x]          
+    mov     [color_player_x], ax    ; Guarda las posiones de x de la casilla para pintar en ella
     xor     ax, ax
-    mov     ax, [player_y] 
-    mov     [color_player_y], ax
+    mov     ax, [player_y]          ;
+    mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
     xor     ax, ax
 
-    mov     ax, 06h                 ; Moves 6 to ax
-    cmp     [player_y], ax          ; compares the player_y to the up border
-    jle      exitRoutine             ; if equal, return. Dont move
+    mov     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
+    jle      exitRoutine            ; Si lo tocaria entonces no lo mueve
 
-    call    deletePlayer            ; Deletes player from screen
+
+    call    deletePlayer            ; Sino elimina al jugador de la posicion para moverlo
 
     mov     ax, [player_y]          
-    add     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    add     ax, [player_speed]      ; Suma la velocidad del jugador para poder moverlo abajo
+    mov     [temp_player_y], ax     ; Guarda el nuevo valor de y en la variable temporal  
     
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento 
 
-    mov     [player_y], ax          ; Updates pos y of player
+    mov     [player_y], ax          ; Actualiza la posicion del jugador en y
 
     mov     ax, [player_x]          
-    add     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_x], ax     ; stores the new position in the temp y
+    add     ax, [player_speed]      ; Suma la velocidad del jugador para poder moverlo derecha
+    mov     [temp_player_x], ax     ; Guarda el nuevo valor de x en la variable temporal  
 
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento 
 
-    mov     [player_x], ax          ; Updates pos y of player
+    mov     [player_x], ax          ; Actualiza la posicion del jugador en x
 
-    jmp     verifyMode  
+    jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
 
-playerRight:                        ; Moves player right
+playerRight:                        ; Mueve al jugador hacia la derecha
 
-    ; Apenas entra actualiza el color al que deberia printear segun el movimiento
-    mov     al, [yellow_color]               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+    mov     al, [yellow_color]      ; Guarda el color del cual se debe pintar el movimiento 
+    mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
     xor     al, al
-    mov     ax, [player_x] 
-    mov     [color_player_x], ax
+    mov     ax, [player_x]          
+    mov     [color_player_x], ax    ; Guarda las posiones de x de la casilla para pintar en ella
     xor     ax, ax
     mov     ax, [player_y] 
-    mov     [color_player_y], ax
+    mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
     xor     ax, ax
 
 
-    mov     ax, [gameWidth]         ; Moves the game height to ax
-    add     ax, 06h                 
-    cmp     [player_x], ax          ; compares the player_y to the right border
-    jge      exitRoutine            ; if equal, return. Dont move
+    mov     ax, [gameWidth]         ; Mueve el valor del ancho a ax
+    add     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_x], ax          ; Compara si la posicion x esta por tocar un borde con el movimiento
+    jge      exitRoutine            ; Si lo tocaria entonces no lo mueve
 
-    call    deletePlayer            ; Deletes player from screen
 
-    mov     ax, [player_x]          ; gets x position
-    add     ax, [player_speed]      ; adds speed to x position
-    mov     [temp_player_x], ax     ; stores the new position in temp variable
-    call    checkPlayerColision     ; checks for colision
+    call    deletePlayer            ; Sino elimina al jugador de la posicion para moverlo
 
-    mov     [player_x], ax          ; Updates pos x of player
+    mov     ax, [player_x]          
+    add     ax, [player_speed]      ; Suma la velocidad del jugador para poder moverlo derecha
+    mov     [temp_player_x], ax     ; Guarda el nuevo valor de x en la variable temporal
 
-    jmp     verifyMode
 
-playerSO:                           ; Moves player up
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento   
 
-    mov     al, [blue_color]               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+    mov     [player_x], ax          ; Actualiza la posicion del jugador en y
+
+    jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
+
+
+
+playerSO:                           ; Mueve al jugador hacia el Sur-Oeste
+
+    mov     al, [blue_color]        ; Guarda el color del cual se debe pintar el movimiento 
+    mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
     xor     al, al
     mov     ax, [player_x] 
-    mov     [color_player_x], ax
+    mov     [color_player_x], ax    ; Guarda las posiones de x de la casilla para pintar en ella
     xor     ax, ax
     mov     ax, [player_y] 
-    mov     [color_player_y], ax
+    mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
     xor     ax, ax
 
-    mov     ax, 06h                 ; Moves 6 to ax
-    cmp     [player_y], ax          ; compares the player_y to the up border
-    jle      exitRoutine             ; if equal, return. Dont move
 
-    call    deletePlayer            ; Deletes player from screen
+    mov     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
+    jle      exitRoutine            ; Si lo tocaria entonces no lo mueve
+
+    call    deletePlayer            ; Sino elimina al jugador de la posicion para moverlo
 
     mov     ax, [player_y]          
-    add     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    add     ax, [player_speed]      ; Suma la velocidad del jugador para poder moverlo arriba
+    mov     [temp_player_y], ax     ; Guarda el nuevo valor de y en la variable temporal  
     
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento 
 
-    mov     [player_y], ax          ; Updates pos y of player
+    mov     [player_y], ax          ; Actualiza la posicion del jugador en y
 
     mov     ax, [player_x]          
-    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_x], ax     ; stores the new position in the temp y
+    sub     ax, [player_speed]      ; Resta la velocidad del jugador para poder moverlo izquierda
+    mov     [temp_player_x], ax     ; Guarda el nuevo valor de x en la variable temporal  
 
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento 
 
-    mov     [player_x], ax          ; Updates pos y of player
+    mov     [player_x], ax          ; Actualiza la posicion del jugador en x
 
-    jmp     verifyMode  
+    jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
 
-playerLeft:                         ; Moves player left
 
-    ; Apenas entra actualiza el color al que deberia printear segun el movimiento
-    mov     al, [yellow_color]               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+playerLeft:                         ; Mueve al jugador hacia la izquierda
+
+    mov     al, [yellow_color]      ; Guarda el color del cual se debe pintar el movimiento 
+    mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
     xor     al, al
     mov     ax, [player_x] 
-    mov     [color_player_x], ax
+    mov     [color_player_x], ax    ; Guarda las posiones de x de la casilla para pintar en ella
     xor     ax, ax
     mov     ax, [player_y] 
-    mov     [color_player_y], ax
+    mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
     xor     ax, ax
 
+    mov     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_x], ax          ; Compara si la posicion x esta por tocar un borde con el movimiento
+    jle      exitRoutine            ; Si lo tocaria entonces no lo mueve
 
-    mov     ax, 06h                 ; Moves the game height to ax
-    cmp     [player_x], ax          ; compares the player_y to the right border
-    jle      exitRoutine             ; if equal, return. Dont move
-
-    call    deletePlayer            ; Deletes player from screen
+    call    deletePlayer            ; Sino elimina al jugador de la posicion para moverlo
 
     mov     ax, [player_x]          
-    sub     ax, [player_speed]      
-    mov     [temp_player_x], ax     
-    call    checkPlayerColision     
+    sub     ax, [player_speed]      ; Resta la velocidad del jugador para poder moverlo izquierda
+    mov     [temp_player_x], ax     ; Guarda el nuevo valor de x en la variable temporal 
 
-    mov     [player_x], ax          
-    
-    jmp     verifyMode 
-    
-playerNE:                           ; Moves player up
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento   
 
-    mov     al, [blue_color]               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+    mov     [player_x], ax          ; Actualiza la posicion del jugador en x
+    
+    jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
+
+    
+playerNE:                           ; Mueve al jugador hacia  Nor-Este
+
+    mov     al, [blue_color]        ; Guarda el color del cual se debe pintar el movimiento 
+    mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
     xor     al, al
     mov     ax, [player_x] 
-    mov     [color_player_x], ax
+    mov     [color_player_x], ax    ; Guarda las posiones de x de la casilla para pintar en ella
     xor     ax, ax
     mov     ax, [player_y] 
-    mov     [color_player_y], ax
-    xor     ax, ax
-    mov     ax, 06h                 ; Moves 6 to ax
-    cmp     [player_y], ax          ; compares the player_y to the up border
-    jle      exitRoutine             ; if equal, return. Dont move
+    mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
 
-    call    deletePlayer            ; Deletes player from screen
+    xor     ax, ax
+
+
+    mov     ax, 06h                 ; Mueve en 6 al registro ax
+    cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
+    jle      exitRoutine            ; Si lo tocaria entonces no lo mueve
+
+
+    call    deletePlayer            ; Sino elimina al jugador de la posicion para moverlo
 
     mov     ax, [player_y]          
-    sub     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_y], ax     ; stores the new position in the temp y
+    sub     ax, [player_speed]      ; Resta la velocidad del jugador para poder moverlo arriba
+    mov     [temp_player_y], ax     ; Guarda el nuevo valor de y en la variable temporal  
     
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento 
 
-    mov     [player_y], ax          ; Updates pos y of player
+    mov     [player_y], ax          ; Actualiza la posicion del jugador en y
 
     mov     ax, [player_x]          
-    add     ax, [player_speed]      ; substracts the speed to the player position in y to move up
-    mov     [temp_player_x], ax     ; stores the new position in the temp y
+    add     ax, [player_speed]      ; Suma la velocidad del jugador para poder moverlo derecha
+    mov     [temp_player_x], ax     ; Guarda el nuevo valor de x en la variable temporal  
 
-    call    checkPlayerColision     ; checks if the movement causes a colition
+    call    checkPlayerColision     ; Verifica si ocasiona colision el nuevo movimiento 
 
-    mov     [player_x], ax          ; Updates pos y of player
+    mov     [player_x], ax          ; Actualiza la posicion del jugador en x
 
-    jmp     verifyMode  
+    jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando) 
 
 
-verifyMode:
+
+verifyMode:                    
 
     xor     ax,ax
     mov     ax, [paintMode]         ; Verifica el estado de pintura
@@ -746,18 +782,19 @@ verifyMode:
 
     mov     ax, [eraseMode]         ; Verifica el estado de borrado
     cmp     ax, 01h
-    je      eraseInGame            ; Si estamos en modo de borrado, salta a la rutina correspondiente
+    je      eraseInGame             ; Si estamos en modo de borrado, salta a la rutina correspondiente
 
     ; Si no estamos en modo de pintura ni de borrado, simplemente movemos al jugador
-    ret
+
+    ret                             ; Vuelve al bucle principal
 
 togglePaintMode:
 
-    mov     ax, [eraseMode]         ; Obtiene el valor actual de paintMode
-    cmp     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
-    jne      togglePaintModeAux
+    mov     ax, [eraseMode]         ; Obtiene el valor actual de eraseMode
+    cmp     ax, 01h                 ; Verifica si esta en modo borrar 
+    jne     togglePaintModeAux      ; Sino lo esta entonces activa modo pintar
 
-    ret
+    ret                             ; Vuelve al ciclo principal
 
 togglePaintModeAux:
 
@@ -765,67 +802,136 @@ togglePaintModeAux:
     xor     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
     mov     [paintMode], ax         ; Actualiza paintMode
 
-    ret    
+    ret                             ; Vuelve al ciclo principal
 
 toggleEraseMode:
 
     mov     ax, [paintMode]         ; Obtiene el valor actual de paintMode
-    cmp     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
-    jne      toggleEraseModeAux
+    cmp     ax, 01h                 ; Verifica si esta en modo pintar 
+    jne      toggleEraseModeAux     ; Sino lo esta entonces activa modo pintar
 
-    ret
+    ret                             ; Vuelve al ciclo principal
 
 toggleEraseModeAux:
 
-    mov     ax, [eraseMode]         ; Obtiene el valor actual de paintMode
+    mov     ax, [eraseMode]         ; Obtiene el valor actual de eraseMode
     xor     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
-    mov     [eraseMode], ax         ; Actualiza paintMode
+    mov     [eraseMode], ax         ; Actualiza eraseMode
 
-    ret 
+    ret                             ; Vuelve al ciclo principal
 
 
 paintInGame:
 
-    mov     cx, [color_player_x]       ; Obtén el tamaño del jugador (ancho o alto, asumiendo que es cuadrado)
-    mov     dx, [color_player_y]                  ; Establece el contador de bucle para el tamaño del jugador
-    jmp     paintLoop
+    mov     cx, [color_player_x]    ; Obtiene el valor de x de la casilla que se va a pintar
+    mov     dx, [color_player_y]    ; Obtiene el valor de y de la casilla que se va a pintar
+    jmp     paintLoop               ; Llama al paintloop que pintara la casilla
 
 paintLoop:
 
-    mov     ah, 0ch                 ; Draw pixel
-    mov     al, [currentColor]      ; player color 
-    mov     bh, 00h                 ; Page
-    int     10h                     ; Interrupt
-    inc     cx                      ; cx + 1
+    mov     ah, 0ch                 ; Indica que se va a dibujar un pixel en pantalla
+    mov     al, [currentColor]      ; Indica el color del pixel (color segun movimiento) 
+    mov     bh, 00h                 ; Indica en que pagina lo va a dibujar (predeterminada)
+    int     10h                     ; Llama a la interrupcion para dibujar en pantalla
+    inc     cx                      ; Incrementa en 1 el cx 
     mov     ax, cx                  
-    sub     ax, [color_player_x]          ; Substract player width with the current column
-    cmp     ax, [player_size]       ; compares if ax is greater than player size
-    jng     paintLoop         ; if not greater, draw next column
-    jmp     paintLoop2       ; Else, jump to next aux function
+    sub     ax, [color_player_x]    ; Resta 1 a la posicion del jugador para dibujar el siguiente pixel del sprite (dibujando anchura)
+    cmp     ax, [player_size]       ; Verifica si el ax es mas grande que el tamano del jugador
+    jng     paintLoop               ; Si aun no es mas grande sigue dibujando la siguiente columna
+    jmp     paintLoop2              ; Sino salta a la siguiente funcion de dibujo (dibujar altura del sprite)
 
 
 
 paintLoop2:
 
-    mov     cx, [color_player_x]            ; reset columns
-    inc     dx                        ; dx +1
+    mov     cx, [color_player_x]    ; Restablece el valor de las columnas
+    inc     dx                      ; Aumenta en la fila
     mov     ax, dx                  
-    sub     ax, [color_player_y]            ; Substract player height with the current row
-    cmp     ax, [player_size]         ; compares if ax is greater than player size
-    jng     paintLoop           ; if not greater, draw next row
+    sub     ax, [color_player_y]    ; Resta 1 a la posicion del jugador para dibujar el siguiente pixel del sprite (dibujando altura)
+    cmp     ax, [player_size]       ; Verifica si el ax es mas grande que el tamano del jugador
+    jng     paintLoop               ; Si aun no es mas grande sigue dibujando la siguiente fila
 
-    ret                             ; Retorna de la función
+    ret                             ; Sino vuelve al bucle principal 
     
 eraseInGame:
-    mov     al, 00h               ; Guarda el hexa del color verde en el registro al
-    mov     [currentColor], al    ; Establece el color como el actual
+    mov     al, 00h                 ; Guarda el hexa del color verde en el registro al
+    mov     [currentColor], al      ; Establece el color como el actual
     xor     al, al
-    mov     cx, [color_player_x]       ; Obtén el tamaño del jugador (ancho o alto, asumiendo que es cuadrado)
-    mov     dx, [color_player_y]                  ; Establece el contador de bucle para el tamaño del jugador
+    mov     cx, [color_player_x]    ; Obtén el tamaño del jugador (ancho o alto, asumiendo que es cuadrado)
+    mov     dx, [color_player_y]    ; Establece el contador de bucle para el tamaño del jugador
     jmp     paintLoop
     
 
-    ret                             ; return
+    ret                             ; Sino vuelve al bucle principal 
+        
+
+exitPlayerMovement:
+    mov     ax, [player_x]            
+    mov     [temp_player_x], ax           
+    mov     ax, [player_y]            
+    mov     [temp_player_y], ax          
+
+    call    resetGame 
+
+resetGame:
+    call    clearScreen             ; Llama al limpiador de pantalla 
+    jmp     startGame               ; Vuelve a llamar al inicio de juego
+
+exitRoutine:                       
+    ret                             ; Permite salir de una rutina y vuelve al ciclo principal
+
+
+
+
+;-----------------------Check colisions-----------------------
+
+;compares if the pixel in the position of the temp x and y of the player, matches the color of a wall
+;if that happens it means the player movement made him collide with a wall
+;But if the color of the pixel is red, it means the player reached the goal
+
+
+checkPlayerColision:
+     push ax
+
+     mov cx, [temp_player_x]
+     mov dx, [temp_player_y]
+     mov ah, 0dh
+     mov bh, 00h
+     int 10h
+
+    mov [lastColor], al  ; Establece el color como el actual
+
+     ;cmp al, [purple_color]
+     ;je  exitRoutine
+
+     ;cmp al, [blue_color]
+     ;je exitRoutine
+     
+     ;cmp al, [red_color]
+     ;je exitRoutine
+
+     ;cmp al, [yellow_color]
+     ;je exitRoutine
+
+     ;cmp al, [goal_color]
+     ;je goalReached
+
+     pop ax
+
+     ret
+
+win:
+    call    clearScreen
+    jmp     winnerLoop
+
+
+;goalReached:
+;     mov    ax, 01h
+;     cmp    ax, [level]
+;     je     startLevel2
+;     call   clearScreen
+;     jmp    winnerLoop
+
 
 ; ;-----------------------Render Goal-----------------------
 
@@ -875,69 +981,3 @@ eraseInGame:
 ;     jng     renderGoalAux1           ; if not greater, draw next row
 ;     ret                               ; Else, return
 
-;-----------------------Check colisions-----------------------
-
-;compares if the pixel in the position of the temp x and y of the player, matches the color of a wall
-;if that happens it means the player movement made him collide with a wall
-;But if the color of the pixel is red, it means the player reached the goal
-
-
-checkPlayerColision:
-     push ax
-
-     mov cx, [temp_player_x]
-     mov dx, [temp_player_y]
-     mov ah, 0dh
-     mov bh, 00h
-     int 10h
-
-    mov [lastColor], al  ; Establece el color como el actual
-
-     ;cmp al, [purple_color]
-     ;je  exitRoutine
-
-     ;cmp al, [blue_color]
-     ;je exitRoutine
-     
-     ;cmp al, [red_color]
-     ;je exitRoutine
-
-     ;cmp al, [yellow_color]
-     ;je exitRoutine
-
-     ;cmp al, [goal_color]
-     ;je goalReached
-
-     pop ax
-
-     ret
-
-
-
-;goalReached:
-;     mov    ax, 01h
-;     cmp    ax, [level]
-;     je     startLevel2
-;     call   clearScreen
-;     jmp    winnerLoop
-
-win:
-    call   clearScreen
-    jmp    winnerLoop
-
-
-
-exitPlayerMovement:
-    mov     ax, [player_x]            
-    mov     [temp_player_x], ax           
-    mov     ax, [player_y]            
-    mov     [temp_player_y], ax          
-
-    call resetGame 
-
-resetGame:
-    call clearScreen
-    jmp startGame
-
-exitRoutine:                       
-    ret                      
