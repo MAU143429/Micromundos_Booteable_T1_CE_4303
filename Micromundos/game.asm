@@ -516,7 +516,7 @@ setRandomSpawn:
 
     ; Multiplicar el resultado por 65
     mov ax, dx
-    imul ax, 65        ; Multiplica ax por 65
+    imul ax, 10        ; Multiplica ax por 65
 
     ; Asignar el valor normalizado para x y y
     mov [player_x], ax ; Asigna el valor normalizado a x
@@ -1097,7 +1097,7 @@ checkPlayerColision:
     ; Verifica si paintMode es 1
     mov al, [paintMode]  ; Carga el valor de paintMode en al
     cmp al, 01h            ; Compara con 1
-    jne skipAdditionalComparison  ; Si paintMode no es 1, salta la comparación adicional
+    je skipAdditionalComparison  ; Si paintMode no es 1, salta la comparación adicional
 
     
 skipAdditionalComparison:
