@@ -14,8 +14,9 @@ secondsLeft    dw 60    ; Inicializar con el número de segundos deseados (1 min
 secondsunit    dw 48    ; Inicializar con las unidades  deseados (1 minuto)
 secondsdecs    dw 54    ; Inicializar con las decenas  deseados (1 minuto)
 currentColor   dw 0Ah   ; Color actual (por defecto, verde)
-timerSeconds   db 0     ; Contabiliza los ticks
-clockSeconds   db 0
+timerSeconds   dw 0     ; Contabiliza los ticks
+clockSeconds   dw 0
+difSeconds     dw 0
 
 ; Constantes -----------------------------------------------------------------------------------------------
 
@@ -103,7 +104,7 @@ startProgram:
     jmp  menuLoop                   ; Salta al bucle del menu principal
 
 startGame:                          
-    call    setLevel1               ; Establece el nivel 1 (deberia hacer que respawnee random)                                                 ELIMINAR
+    call    setRandomSpawn          ; Establece el nivel 1 (deberia hacer que respawnee random)                                                 ELIMINAR
 
     call    clearScreen             ; Llama al limpiador de pantalla
 
@@ -161,28 +162,35 @@ gameLoop:
 
 initTimer:
 
-    mov ah, 2Ch        ; Función para obtener la hora
-    int 0x21           ; Llamar a la interrupción 0x1A
+    xor dx,dx
+    mov ah, 00h        ; Función para obtener la hora del sistema
+    int 0x1A
 
-    mov  [timerSeconds], dh   ; Cl contiene los segundos  
+    mov  [timerSeconds], dx   ; Cl contiene los segundos 
+
+    xor dx,dx
 
     ret
 
 timerLoop:
-    mov ah, 2Ch        ; Función para obtener la hora del sistema
-    int 0x21            ; Llamar a la interrupción 0x21
+    xor dx,dx
+    mov ah, 00h        ; Función para obtener la hora del sistema
+    int 0x1A
 
-    mov [clockSeconds], dh          ; Movemos los segundos (DH) a AL
+    mov [clockSeconds], dx          ; Movemos los segundos (DH) a AL 
 
-    ; Restamos clockSeconds de timerSeconds
-    mov al, [clockSeconds]
-    sub al, [timerSeconds]
+    
+    mov word [difSeconds], clockSeconds
+
+
+    mov eax, [difSeconds]     
+    sub eax, [timerSeconds]   
 
     ; Comparamos el resultado de la resta con 1
-    cmp al, 1
+    cmp eax, 18
     jg delayLoop        ; Si la resta es mayor que 1, salta a delayLoop
     
-
+    xor dx,dx
 
     ret
 
@@ -490,19 +498,22 @@ finishDraw:                         ; Permite volver al ciclo principal cuando e
     ret                             
 
 
-setLevel1:                          
-    mov     ax, 01h                 
-    mov     [level], ax              ; SCambia el valor de la variable nivel a 1                                                              MODIFICAR
+setRandomSpawn:      
 
-    mov     ax, 03h                       
+    xor dx,dx
+    mov ah, 00h        ; Función para obtener la hora del sistema
+    int 0x1A            ; Llamar a la interrupción 0x21
+
+
+    mov     ax, dx                       
     mov     [player_x], ax           ; Indica la coordenada donde el jugador comienza en x
     mov     [temp_player_x], ax      ; Guarda la misma coordenada en el temp x
     mov     ax, 0ah                      
     mov     [player_y], ax           ; Indica la coordenada donde el jugador comienza en y
     mov     [temp_player_y], ax      ; Guarda la misma coordenada en el temp y
-
-    mov     ax, 00h                       
-    mov     [gamePaused], ax         ; Quita la pausa del juego                                                                                ELIMINAR
+    
+    xor dx,dx
+    
     ret
 
 
