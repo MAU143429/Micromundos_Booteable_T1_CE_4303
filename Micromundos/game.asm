@@ -1005,16 +1005,24 @@ exitPlayerMovement:
     call    resetGame 
 
 resetGame:
+    call clearCounter
     call    clearScreen             ; Llama al limpiador de pantalla 
     jmp     startGame               ; Vuelve a llamar al inicio de juego
 
 win:
+    call clearCounter
     call    clearScreen
     jmp     winnerLoop
 
 lose:
+    call clearCounter
     call    clearScreen
     jmp     loserLoop
+
+clearCounter:
+    mov word [secondsLeft], 60
+    mov word [secondsunit], 48
+    mov word [secondsdecs], 54
 
 exitRoutine:                       
     ret                             ; Permite salir de una rutina y vuelve al ciclo principal
