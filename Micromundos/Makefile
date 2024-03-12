@@ -9,10 +9,10 @@ image:
 
 	dd if=/dev/zero of=bootgame.img bs=512 count=2880
 	
-	nasm -fbin boot.asm -o boot.bin
+	nasm -fbin boot2.asm -o boot2.bin
 	nasm -fbin game.asm -o game.bin
 
-	cat boot.bin game.bin > bootgame.img
+	cat boot2.bin game.bin > bootgame.img
 
 run:
 	dd if=/dev/zero of=bootgame.img bs=512 count=2880

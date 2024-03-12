@@ -121,6 +121,7 @@ initDisplay:
     int 10h                         ; 10h con el codigo 13h de video VGA
     ret
 
+
 menuLoop:                           
 
     call    checkPlayerMenuAction   ; Revisa si el usuario presiono ENTER para empezar el juego
@@ -149,7 +150,7 @@ gameLoop:
 
     call    drawInGameText          ; Dibuja el menu de controles dentro del juego principal
 
-    ;call    timerLoop               ; Verifica el estado del temporizador
+    call    timerLoop               ; Verifica el estado del temporizador
 
     call    drawInGameTime
 
@@ -162,41 +163,28 @@ gameLoop:
 
 initTimer:
 
-    xor dx,dx
-    mov ah, 00h        ; Función para obtener la hora del sistema
+    mov ah, 02h        ; Función para obtener la hora del sistema
     int 0x1A
 
-    mov  [timerSeconds], dx   ; Cl contiene los segundos 
-
-    xor dx,dx
-
+    mov  [timerSeconds], dh   
     ret
 
 timerLoop:
-    xor dx,dx
-    mov ah, 00h        ; Función para obtener la hora del sistema
+
+    mov ah, 02h        ; Función para obtener la hora del sistema
     int 0x1A
 
-    mov [clockSeconds], dx          ; Movemos los segundos (DH) a AL 
-
-    
-    mov word [difSeconds], clockSeconds
+    mov bx , [clockSeconds]
 
 
-    mov eax, [difSeconds]     
-    sub eax, [timerSeconds]   
-
-    ; Comparamos el resultado de la resta con 1
-    cmp eax, 18
-    jg delayLoop        ; Si la resta es mayor que 1, salta a delayLoop
-    
-    xor dx,dx
+    cmp [clockSeconds], dh          ; Movemos los segundos (DH) a AL 
+    jne delayLoop
 
     ret
 
 delayLoop:
 
-    mov  word [timerSeconds], clockSeconds
+    mov [clockSeconds], dh
 
     dec  word [secondsLeft]       ; Resta un segundo al temporizador  
 
@@ -500,50 +488,11 @@ finishDraw:                         ; Permite volver al ciclo principal cuando e
 
 setRandomSpawn:      
 
-    xor dx, dx
-    mov ah, 0x00       ; Función para obtener los timer ticks del sistema
-    int 0x1A           ; Llamar a la interrupción 0x1A para obtener los timer ticks
-
-    ; Restar 1000000 a los ticks
-    sub dx, 1000000
-
-    ; Dividir el resultado entre 1000000
-    mov ax, dx
-    xor dx, dx
-    mov cx, 10000      ; Divisor (1000000 / 100 = 10000)
-    div cx             ; Divide dx:ax por cx
-    mov dx, ax         ; El resultado de la división queda en dx (parte alta de la división)
-
-    ; Multiplicar el resultado por 65
-    mov ax, dx
-    imul ax, 10        ; Multiplica ax por 65
-
-    ; Asignar el valor normalizado para x y y
-    mov [player_x], ax ; Asigna el valor normalizado a x
-    mov [temp_player_x], ax ; Guarda la misma coordenada en el temp x
-
-    xor ax, ax
-
-    xor dx, dx
-    mov ah, 0x00       ; Función para obtener los timer ticks del sistema
-    int 0x1A           ; Llamar a la interrupción 0x1A para obtener los timer ticks
-
-    ; Restar 1000000 a los ticks
-    sub dx, 1000000
-
-    ; Dividir el resultado entre 1000000
-    mov ax, dx
-    xor dx, dx
-    mov cx, 10000      ; Divisor (1000000 / 100 = 10000)
-    div cx             ; Divide dx:ax por cx
-    mov dx, ax         ; El resultado de la división queda en dx (parte alta de la división)
-
-    ; Multiplicar el resultado por 65
-    mov ax, dx
-    imul ax, 10        ; Multiplica ax por 65
-
+    mov  ax,0ah
     mov [player_y], ax ; Asigna el valor normalizado a y
     mov [temp_player_y], ax ; Guarda la misma coordenada en el temp y
+    mov [player_x], ax ; Asigna el valor normalizado a y
+    mov [temp_player_x], ax ; Guarda la misma coordenada en el temp y
 
     ret
 
