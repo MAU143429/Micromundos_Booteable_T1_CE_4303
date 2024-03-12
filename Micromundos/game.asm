@@ -14,7 +14,8 @@ secondsLeft    dw 60    ; Inicializar con el número de segundos deseados (1 min
 secondsunit    dw 48    ; Inicializar con las unidades  deseados (1 minuto)
 secondsdecs    dw 54    ; Inicializar con las decenas  deseados (1 minuto)
 currentColor   dw 0Ah   ; Color actual (por defecto, verde)
-timerSeconds   dw 0     ; Contabiliza los ticks
+timerSeconds   db 0     ; Contabiliza los ticks
+clockSeconds   db 0
 
 ; Constantes -----------------------------------------------------------------------------------------------
 
@@ -160,30 +161,34 @@ gameLoop:
 
 initTimer:
 
-    mov ah, 0x02        ; Función para obtener la hora
-    int 0x1A            ; Llamar a la interrupción 0x1A
+    mov ah, 2Ch        ; Función para obtener la hora
+    int 0x21           ; Llamar a la interrupción 0x1A
 
-    mov  [timerSeconds], cl   ; Cl contiene los segundos  
+    mov  [timerSeconds], dh   ; Cl contiene los segundos  
 
     ret
 
 timerLoop:
+    mov ah, 2Ch        ; Función para obtener la hora del sistema
+    int 0x21            ; Llamar a la interrupción 0x21
 
-    mov ah, 0x02        ; Función para obtener la hora
-    int 0x1A            ; Llamar a la interrupción 0x1A
+    mov [clockSeconds], dh          ; Movemos los segundos (DH) a AL
 
-    movzx eax, cl
-    mov ebx, [timerSeconds]
-    sub eax,ebx
+    ; Restamos clockSeconds de timerSeconds
+    mov al, [clockSeconds]
+    sub al, [timerSeconds]
 
-    cmp  eax,1 
-    jg   delayLoop
+    ; Comparamos el resultado de la resta con 1
+    cmp al, 1
+    jg delayLoop        ; Si la resta es mayor que 1, salta a delayLoop
+    
+
 
     ret
 
 delayLoop:
 
-    mov  [timerSeconds], cl
+    mov  word [timerSeconds], clockSeconds
 
     dec  word [secondsLeft]       ; Resta un segundo al temporizador  
 
@@ -611,10 +616,7 @@ makeMovements:                      ; Funcion que se encarga de ejecutar accione
     je      resetGame               ; Reinicia el juego
 
     cmp     al, 1Bh                 ; Si la tecla es : esc
-    je      startProgram            ; EL juego termina y vuelve al menu principal
-
-    cmp     al,'m'                 ; Si la tecla es : esc
-    je      delayLoop               ; EL juego termina y vuelve al menu principal
+    je      startProgram            ; EL juego termina y vuelve al menu principa
 
 
     ret
