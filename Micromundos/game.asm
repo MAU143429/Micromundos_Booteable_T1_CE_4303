@@ -11,7 +11,10 @@ lastColor      dw 00h   ; Color de la casilla en donde se encuentra
 paintMode      dw 00h   ; Flag para indicar si el jugador está en modo de pintura
 eraseMode      dw 00h   ; Flag para indicar si el jugador está en modo de borrador
 secondsLeft    dw 60    ; Inicializar con el número de segundos deseados (1 minuto)
+secondsunit    dw 48    ; Inicializar con las unidades  deseados (1 minuto)
+secondsdecs    dw 54    ; Inicializar con las decenas  deseados (1 minuto)
 currentColor   dw 0Ah   ; Color actual (por defecto, verde)
+timerSeconds   dw 0     ; Contabiliza los ticks
 
 ; Constantes -----------------------------------------------------------------------------------------------
 
@@ -24,11 +27,15 @@ purple_color   dw 50h   ; EEstablece el color del movimiento (up, down)
 
 gameHeight     dw 46h   ; Define el tamano del alto area de juego 100 pixeles
 gameWidth      dw 12ah  ; Define el tamano del ancho area de juego 150 pixeles
+timerPosX      dw 19h   ; Posición X para decenas del temporizador
+timerPosX2     dw 1ah   ; Posición X para unidades del temporizador
+timerPosY      dw 15h   ; Posición Y para el temporizador
+
 
 
 gamePaused     dw 00h   ; Flag to know if the game is paused. 0 not paused. 1 paused                              ELIMINAR
 
-textColor      dw 150h  ; COlor del texto para los menus
+textColor      dw 150h  ; Color del texto para los menus
 player_x       dw 03h   ; Posicion en x del jugador
 player_y       dw 0ah   ; Posicion en y del jugador 
 temp_player_x  dw 03h   ; Posicion temporal en x del jugador
@@ -61,9 +68,14 @@ winner5  dw '   Presione ENTER para repetir    ', 0h
 
 loser1   dw '          ---------------           ', 0h
 loser2   dw '          -   PERDISTE  -           ', 0h
-loser3   dw '          -      :v     -           ', 0h
+loser3   dw '          -             -           ', 0h
 loser4   dw '          ---------------           ', 0h
 loser5   dw '   Presione ENTER para repetir    ', 0h
+
+
+timeText  dw '  Tiempo restante ->    ', 0h
+timeValue dw '  ', 0h
+timeUnits dw ' s  ', 0h
 
 ; Menu de controles In-Game --------------------------------------------------------------------------------------
 
@@ -84,14 +96,20 @@ inGame10 dw '-------------------------------------', 0h
 
 startProgram:
     call initDisplay                ; Llama al inicializador de la pantalla
-    call clearScreen                ; Llama al limpiador de pantalla
-    jmp  menuLoop                   ; Salta al bucle del menu principal
 
+    call clearScreen                ; Llama al limpiador de pantalla
+
+    jmp  menuLoop                   ; Salta al bucle del menu principal
 
 startGame:                          
     call    setLevel1               ; Establece el nivel 1 (deberia hacer que respawnee random)                                                 ELIMINAR
-    call    clearScreen             ; Llama al limpiador de pantall
+
+    call    clearScreen             ; Llama al limpiador de pantalla
+
+    call    initTimer               ; Llama al iniciador del timer 
+
     call    drawInGameText          ; Dibuja el menu de controles dentro del juego
+
     jmp     gameLoop                ; Salta al bucle de juego principal
 
 
@@ -117,10 +135,21 @@ winnerLoop:
 
     jmp     winnerLoop              ; Se llama asi misma hasta que se detecte el ENTER
 
+loserLoop: 
+
+    call    checkPlayerMenuAction   ; Verifica si el jugador presiono el ENTER para jugar de nuevo
+    
+    call    drawLoserMenu          ; Dibuja el menu de ganador de la partida
+
+    jmp     loserLoop              ; Se llama asi misma hasta que se detecte el ENTER
 
 gameLoop:                           
 
     call    drawInGameText          ; Dibuja el menu de controles dentro del juego principal
+
+    call    timerLoop               ; Verifica el estado del temporizador
+
+    call    drawInGameTime
 
     call    checkPlayerGameInput    ; Revisa contanstemente las teclas para detectar cualquier movimiento del jugador en juego 
 
@@ -128,6 +157,54 @@ gameLoop:
 
     jmp     gameLoop                ; Se llama asi misma hasta que ocurra alguna accion por parte del usuario
 
+
+initTimer:
+
+    mov ah, 0x02        ; Función para obtener la hora
+    int 0x1A            ; Llamar a la interrupción 0x1A
+
+    mov  [timerSeconds], cl   ; Cl contiene los segundos  
+
+    ret
+
+timerLoop:
+
+    mov ah, 0x02        ; Función para obtener la hora
+    int 0x1A            ; Llamar a la interrupción 0x1A
+
+    movzx eax, cl
+    mov ebx, [timerSeconds]
+    sub eax,ebx
+
+    cmp  eax,1 
+    jg   delayLoop
+
+    ret
+
+delayLoop:
+
+    mov  [timerSeconds], cl
+
+    dec  word [secondsLeft]       ; Resta un segundo al temporizador  
+
+
+    cmp  word [secondsunit], 48 
+    je   delayLoopAux
+
+
+    dec  word [secondsunit]
+
+    cmp word [secondsLeft], 0
+    je lose
+
+    ret
+
+delayLoopAux:
+
+    mov  word [secondsunit], 57
+    dec word [secondsdecs]
+
+    ret
 
 
 ; Funciones de renderizado del jugador y pintado ------------------------------------------------------------------------------*
@@ -170,8 +247,6 @@ checkPlayerMenuAction:
     ret                             ; Si ningun escenario pasa, devuelve al bucle prinicipal
 
 
-
-
 drawTextMenu:                       
     mov     bx, [textColor]         ; Establece el color del texto para pintar el Menu Principal
 
@@ -199,6 +274,32 @@ drawTextMenu:
     mov     dh, 10h                     
     mov     dl, 02h                 
     call    drawText                
+
+    ret
+
+drawInGameTime:
+
+    mov     bx, [textColor]         ; Establece el color del texto para pintar el texto In Game
+
+    mov     bx, timeText            ; Selecciona el texto que quiere escribir
+    mov     dh, 15h                 ; Selecciona la coordenada y en pixeles donde se escribira
+    mov     dl, 04h                 ; Selecciona la coordenada X en pixeles donde se escribira               
+    call    drawText                ; Llama a la funcion que lo coloca en pantalla
+
+    mov     bx, timeUnits           ; Selecciona el texto que quiere escribir
+    mov     dh, 15h                 ; Selecciona la coordenada y en pixeles donde se escribira
+    mov     dl, 1dh                 ; Selecciona la coordenada X en pixeles donde se escribira               
+    call    drawText                ; Llama a la funcion que lo coloca en pantalla
+
+    mov     bx, secondsdecs        ; Obtiene el valor actual del contador
+    mov     dh, [timerPosY]         ; Selecciona la coordenada y en pixeles donde se escribira
+    mov     dl, [timerPosX]         ; Selecciona la coordenada X en pixeles donde se escribira               
+    call    drawText
+    
+    mov     bx, secondsunit         ; Obtiene el valor actual del contador
+    mov     dh, [timerPosY]         ; Selecciona la coordenada y en pixeles donde se escribira
+    mov     dl, [timerPosX2]         ; Selecciona la coordenada X en pixeles donde se escribira               
+    call    drawText 
 
     ret
 
@@ -316,6 +417,40 @@ drawWinnerMenu:                     ; Se encarga de dibujar el menu cuando el ju
 
     ret
 
+drawLoserMenu:                      ; Se encarga de dibujar el menu cuando el jugador gano la partida
+
+    mov     bx, [textColor]         ; Se establece el color del texto 
+    inc     bx                      ; Incrementa el color en 1 para que de un efecto de arcoiris y que la animacion sea cambiar de color
+    mov     [textColor], bx         ; Guarda el nuevo color
+
+    mov     bx, loser1             ; Selecciona el texto que quiere escribir
+    mov     dh, 07h                 ; Selecciona la coordenada y en pixeles donde se escribira
+    mov     dl, 02h                 ; Selecciona la coordenada X en pixeles donde se escribira 
+    call    drawText                ; Llama a la funcion que lo coloca en pantalla
+
+
+    mov     bx, loser2             ; Cambia a la siguiente linea de texto
+    inc     dh                      ; Incrementa el valor de y para dibujar la nueva linea justo debajo de la otra
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, loser3          
+    inc     dh                      
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, loser4         
+    inc     dh                                       
+    mov     dl, 02h                 
+    call    drawText                
+
+    mov     bx, loser5         
+    mov     dh, 10h                     
+    mov     dl, 02h                 
+    call    drawText                
+
+    ret
+
 drawText:                           ; Esta funcion se encarga de dibujar texto en pantalla
 
     cmp     byte [bx],0             ; Verifica si el texto ya se termino de dibujar en pantalla
@@ -372,16 +507,16 @@ renderPlayer:                        ; Permite dibujar al jugador en pantalla.
     jmp     renderPlayerAux           
 
 renderPlayerAux:
-     mov    ah, 0ch                  ; Indica que se va a dibujar un pixel en pantalla
-     mov    al, [player_color]       ; Indica el color del pixel (color del jugador)
-     mov    bh, 00h                  ; Indica en que pagina lo va a dibujar (predeterminada)
-     int    10h                      ; Llama a la interrupcion para dibujar en pantalla
-     inc    cx                       ; Incremente en 1 el cx
-     mov    ax, cx                  
-     sub    ax, [player_x]           ; Resta 1 a la posicion del jugador para dibujar el siguiente pixel del sprite (dibujando anchura)
-     cmp    ax, [player_size]        ; Verifica si el ax es mas grande que el tamano del jugador
-     jng    renderPlayerAux          ; Si aun no es mas grande sigue dibujando la siguiente columna
-     jmp    renderPlayerAux2         ; Sino salta a la siguiente funcion de dibujo (dibujar altura del sprite)
+    mov    ah, 0ch                   ; Indica que se va a dibujar un pixel en pantalla
+    mov    al, [player_color]        ; Indica el color del pixel (color del jugador)
+    mov    bh, 00h                   ; Indica en que pagina lo va a dibujar (predeterminada)
+    int    10h                       ; Llama a la interrupcion para dibujar en pantalla
+    inc    cx                        ; Incremente en 1 el cx
+    mov    ax, cx                   
+    sub    ax, [player_x]            ; Resta 1 a la posicion del jugador para dibujar el siguiente pixel del sprite (dibujando anchura)
+    cmp    ax, [player_size]         ; Verifica si el ax es mas grande que el tamano del jugador
+    jng    renderPlayerAux           ; Si aun no es mas grande sigue dibujando la siguiente columna
+    jmp    renderPlayerAux2          ; Sino salta a la siguiente funcion de dibujo (dibujar altura del sprite)
 
 renderPlayerAux2:
     mov     cx, [player_x]           ; Restablece el valor de las columnas
@@ -477,6 +612,9 @@ makeMovements:                      ; Funcion que se encarga de ejecutar accione
 
     cmp     al, 1Bh                 ; Si la tecla es : esc
     je      startProgram            ; EL juego termina y vuelve al menu principal
+
+    cmp     al,'m'                 ; Si la tecla es : esc
+    je      delayLoop               ; EL juego termina y vuelve al menu principal
 
 
     ret
@@ -877,6 +1015,14 @@ resetGame:
     call    clearScreen             ; Llama al limpiador de pantalla 
     jmp     startGame               ; Vuelve a llamar al inicio de juego
 
+win:
+    call    clearScreen
+    jmp     winnerLoop
+
+lose:
+    call    clearScreen
+    jmp     loserLoop
+
 exitRoutine:                       
     ret                             ; Permite salir de una rutina y vuelve al ciclo principal
 
@@ -920,9 +1066,7 @@ checkPlayerColision:
 
      ret
 
-win:
-    call    clearScreen
-    jmp     winnerLoop
+
 
 
 ;goalReached:
