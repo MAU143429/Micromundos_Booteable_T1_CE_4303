@@ -50,8 +50,7 @@ player_size    dw 05h   ; DImensiones del sprite de la tortuga (5x5)
 player_dir     dw 00h   ; Ultima direccion que tuvo el jugador
 
 
-
-tortugaSprite  db 0b00100, 0b11111, 0b01110, 0b11111, 0b00000                                                      ; NO HACE NADA
+tortugaSprite  db 0b00100, 0b11111, 0b01110, 0b01110, 0b10001                                                      ; NO HACE NADA
 
 
 ; Texto del menu principal del juego ---------------------------------------------------------------------------
@@ -488,11 +487,18 @@ finishDraw:                         ; Permite volver al ciclo principal cuando e
 
 setRandomSpawn:      
 
-    mov  ax,0ah
-    mov [player_y], ax ; Asigna el valor normalizado a y
-    mov [temp_player_y], ax ; Guarda la misma coordenada en el temp y
-    mov [player_x], ax ; Asigna el valor normalizado a y
-    mov [temp_player_x], ax ; Guarda la misma coordenada en el temp y
+    mov ah, 02h        ; Función para obtener la hora del sistema
+    int 0x1A
+
+    movsx ax, ch
+    movsx bx, dh
+
+    mul bx
+    
+    mov [player_y], bx ; Asigna el valor normalizado a y
+    mov [temp_player_y], bx ; Guarda la misma coordenada en el temp y
+    mov [player_x], bx ; Asigna el valor normalizado a y
+    mov [temp_player_x], bx ; Guarda la misma coordenada en el temp y
 
     ret
 
