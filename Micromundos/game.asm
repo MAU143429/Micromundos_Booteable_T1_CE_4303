@@ -108,7 +108,7 @@ startGame:
 
     call    clearScreen             ; Llama al limpiador de pantalla
 
-    call    initTimer               ; Llama al iniciador del timer 
+    ;call    initTimer               ; Llama al iniciador del timer 
 
     call    drawInGameText          ; Dibuja el menu de controles dentro del juego
 
@@ -149,7 +149,7 @@ gameLoop:
 
     call    drawInGameText          ; Dibuja el menu de controles dentro del juego principal
 
-    call    timerLoop               ; Verifica el estado del temporizador
+    ;call    timerLoop               ; Verifica el estado del temporizador
 
     call    drawInGameTime
 
@@ -500,20 +500,51 @@ finishDraw:                         ; Permite volver al ciclo principal cuando e
 
 setRandomSpawn:      
 
-    xor dx,dx
-    mov ah, 00h        ; Función para obtener la hora del sistema
-    int 0x1A            ; Llamar a la interrupción 0x21
+    xor dx, dx
+    mov ah, 0x00       ; Función para obtener los timer ticks del sistema
+    int 0x1A           ; Llamar a la interrupción 0x1A para obtener los timer ticks
 
+    ; Restar 1000000 a los ticks
+    sub dx, 1000000
 
-    mov     ax, 0ah                       
-    mov     [player_x], ax           ; Indica la coordenada donde el jugador comienza en x
-    mov     [temp_player_x], ax      ; Guarda la misma coordenada en el temp x
-    mov     ax, 0ah                      
-    mov     [player_y], ax           ; Indica la coordenada donde el jugador comienza en y
-    mov     [temp_player_y], ax      ; Guarda la misma coordenada en el temp y
-    
-    xor dx,dx
-    
+    ; Dividir el resultado entre 1000000
+    mov ax, dx
+    xor dx, dx
+    mov cx, 10000      ; Divisor (1000000 / 100 = 10000)
+    div cx             ; Divide dx:ax por cx
+    mov dx, ax         ; El resultado de la división queda en dx (parte alta de la división)
+
+    ; Multiplicar el resultado por 65
+    mov ax, dx
+    imul ax, 65        ; Multiplica ax por 65
+
+    ; Asignar el valor normalizado para x y y
+    mov [player_x], ax ; Asigna el valor normalizado a x
+    mov [temp_player_x], ax ; Guarda la misma coordenada en el temp x
+
+    xor ax, ax
+
+    xor dx, dx
+    mov ah, 0x00       ; Función para obtener los timer ticks del sistema
+    int 0x1A           ; Llamar a la interrupción 0x1A para obtener los timer ticks
+
+    ; Restar 1000000 a los ticks
+    sub dx, 1000000
+
+    ; Dividir el resultado entre 1000000
+    mov ax, dx
+    xor dx, dx
+    mov cx, 10000      ; Divisor (1000000 / 100 = 10000)
+    div cx             ; Divide dx:ax por cx
+    mov dx, ax         ; El resultado de la división queda en dx (parte alta de la división)
+
+    ; Multiplicar el resultado por 65
+    mov ax, dx
+    imul ax, 10        ; Multiplica ax por 65
+
+    mov [player_y], ax ; Asigna el valor normalizado a y
+    mov [temp_player_y], ax ; Guarda la misma coordenada en el temp y
+
     ret
 
 
@@ -1047,37 +1078,49 @@ exitRoutine:
 ;compares if the pixel in the position of the temp x and y of the player, matches the color of a wall
 ;if that happens it means the player movement made him collide with a wall
 ;But if the color of the pixel is red, it means the player reached the goal
-
-
 checkPlayerColision:
-     push ax
+    push ax
 
-     mov cx, [temp_player_x]
-     mov dx, [temp_player_y]
-     mov ah, 0dh
-     mov bh, 00h
-     int 10h
+    mov cx, [temp_player_x]
+    mov dx, [temp_player_y]
+    mov ah, 0dh
+    mov bh, 00h
+    int 10h
 
     mov [lastColor], al  ; Establece el color como el actual
 
-     ;cmp al, [purple_color]
-     ;je  exitRoutine
+    ; Comparación adicional entre lastColor y currentColor
+    cmp al, [currentColor]
+    je skipWin  ; Si lastColor es igual a currentColor, salta la etiqueta win
 
-     ;cmp al, [blue_color]
-     ;je exitRoutine
+
+    ; Verifica si paintMode es 1
+    mov al, [paintMode]  ; Carga el valor de paintMode en al
+    cmp al, 01h            ; Compara con 1
+    jne skipAdditionalComparison  ; Si paintMode no es 1, salta la comparación adicional
+
+    
+skipAdditionalComparison:
+    ; Comparaciones regulares de colores
+    mov al, [lastColor]
+
+    cmp al, [purple_color]
+    je  win
+
+    cmp al, [blue_color]
+    je  win
      
-     ;cmp al, [red_color]
-     ;je exitRoutine
+    cmp al, [red_color]
+    je  win
 
-     ;cmp al, [yellow_color]
-     ;je exitRoutine
+    cmp al, [yellow_color]
+    je  win
 
-     ;cmp al, [goal_color]
-     ;je goalReached
+skipWin:
+    pop ax
 
-     pop ax
+    ret
 
-     ret
 
 
 
