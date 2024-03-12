@@ -505,7 +505,7 @@ setRandomSpawn:
     int 0x1A            ; Llamar a la interrupción 0x21
 
 
-    mov     ax, dx                       
+    mov     ax, 0ah                       
     mov     [player_x], ax           ; Indica la coordenada donde el jugador comienza en x
     mov     [temp_player_x], ax      ; Guarda la misma coordenada en el temp x
     mov     ax, 0ah                      
