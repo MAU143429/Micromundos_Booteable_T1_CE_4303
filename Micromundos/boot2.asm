@@ -16,15 +16,14 @@ sti
 mov ah, 0
 int 0x13
 
+
 mov bx, 0x8000
 mov al, SECTOR_AMOUNT
 mov ch, 0
 mov dh, 0
 mov cl, 2
 mov ah, 2
-mov ah, 00h     
-mov al, 13h     
-int 10h  
+
 int 0x13
 jmp 0x8000
 
