@@ -1044,17 +1044,9 @@ skipAdditionalComparison:           ; FUNCION QUE VERIFICA EL COLOR CON EL CUAL 
     
     mov     al, [lastColor]         ; Vuelve a cargar el color de la casilla destino
 
-    cmp     al, [purple_color]
-    je      win
-
-    cmp     al, [blue_color]        ; Compara el color de la castilla destino con los de pintado
-    je      win
-     
-    cmp     al, [red_color]
-    je      win
-
-    cmp     al, [yellow_color]
-    je      win
+    cmp     al, [purple_color]      ; Compara el color de la castilla destino con los de pintado
+    je      win      
+   
 
 skipWin:                            ; FUNCION QUE SALTA LA PANTALLA DE WIN
 
