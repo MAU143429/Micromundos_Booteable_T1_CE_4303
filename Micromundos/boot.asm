@@ -16,7 +16,6 @@ sti
 mov ah, 0
 int 0x13
 
-
 mov bx, 0x8000
 mov al, SECTOR_AMOUNT
 mov ch, 0

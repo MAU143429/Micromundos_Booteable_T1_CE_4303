@@ -1,12 +1,21 @@
 org  0x8000
 bits 16
+;-----------------------------------------------------------------------------------------------------------
+;                                 Intituto Tecnologico de Costa Rica
+;                                  Principios de Sistemas Operativos
+;                                         
+;                                        Tarea 1 I-S 2024
+;                   
+;                                   Mauricio Calderon Chavarria 
+;                                   Jose Antonio Espinoza Chaves
+;
+;-----------------------------------------------------------------------------------------------------------
 
-jmp startProgram
+jmp startProgram        ; Salta al inicio del programa
 
 ; Variables ------------------------------------------------------------------------------------------------
 
 time           db 00h   ; Tiempo que representa los fps del programa
-level          dw 01h   ; Nivel del juego                                                                      ELIMINAR
 lastColor      dw 00h   ; Color de la casilla en donde se encuentra
 paintMode      dw 00h   ; Flag para indicar si el jugador está en modo de pintura
 eraseMode      dw 00h   ; Flag para indicar si el jugador está en modo de borrador
@@ -14,9 +23,7 @@ secondsLeft    dw 60    ; Inicializar con el número de segundos deseados (1 min
 secondsunit    dw 48    ; Inicializar con las unidades  deseados (1 minuto)
 secondsdecs    dw 54    ; Inicializar con las decenas  deseados (1 minuto)
 currentColor   dw 0Ah   ; Color actual (por defecto, verde)
-timerSeconds   dw 0     ; Contabiliza los ticks
-clockSeconds   dw 0
-difSeconds     dw 0
+clockSeconds   dw 0     ; Variable que maneja los segundos del sistema
 
 ; Constantes -----------------------------------------------------------------------------------------------
 
@@ -34,9 +41,6 @@ timerPosX2     dw 1ah   ; Posición X para unidades del temporizador
 timerPosY      dw 15h   ; Posición Y para el temporizador
 
 
-
-gamePaused     dw 00h   ; Flag to know if the game is paused. 0 not paused. 1 paused                              ELIMINAR
-
 textColor      dw 150h  ; Color del texto para los menus
 player_x       dw 03h   ; Posicion en x del jugador
 player_y       dw 0ah   ; Posicion en y del jugador 
@@ -48,10 +52,7 @@ player_speed   dw 06h   ; Velocidad de movimiento del jugador
 player_color   dw 0ah   ; Color por defecto del jugador (tortuga)
 player_size    dw 05h   ; DImensiones del sprite de la tortuga (5x5)
 player_dir     dw 00h   ; Ultima direccion que tuvo el jugador
-
-
-tortugaSprite  db 0b00100, 0b11111, 0b01110, 0b01110, 0b10001                                                      ; NO HACE NADA
-
+                                                
 
 ; Texto del menu principal del juego ---------------------------------------------------------------------------
 
@@ -95,33 +96,41 @@ inGame10 dw '-------------------------------------', 0h
 ; Logica del juego  ****************************************************************************************************
 
 
-startProgram:
-    call initDisplay                ; Llama al inicializador de la pantalla
+startProgram:                       ; FUNCION DE INICIO DEL PROGRAMA
 
-    call clearScreen                ; Llama al limpiador de pantalla
 
-    jmp  menuLoop                   ; Salta al bucle del menu principal
-
-startGame:                          
-    call    setRandomSpawn          ; Establece el nivel 1 (deberia hacer que respawnee random)                                                 ELIMINAR
+    call    initDisplay             ; Llama al inicializador de la pantalla
 
     call    clearScreen             ; Llama al limpiador de pantalla
 
-    ;call    initTimer               ; Llama al iniciador del timer 
+    call    clearCounter            ; Llama al limpiador del contador y las flags de las habilidades
+
+    jmp     menuLoop                ; Salta al bucle del menu principal
+
+
+
+startGame:                          ; FUNCION DE INICIO DE JUEGO
+
+    call    setRandomSpawn          ; Llama a la funcion que permite spawnear aleatoriamente al jugador
+
+    call    clearScreen             ; Llama al limpiador de pantalla
 
     call    drawInGameText          ; Dibuja el menu de controles dentro del juego
 
     jmp     gameLoop                ; Salta al bucle de juego principal
 
 
-initDisplay:                        
-    mov ah, 00h                     ; Establece el modo de video 
-    mov al, 13h                     ; llamando a la interrupcion 
-    int 10h                         ; 10h con el codigo 13h de video VGA
+
+initDisplay:                        ; FUNCION INICIALIZADORA DEL MODO DE VIDEO
+
+    mov     ah, 00h                 ; Establece el modo de video 
+    mov     al, 13h                 ; llamando a la interrupcion 
+    int     10h                     ; 10h con el codigo 13h de video VGA
+
     ret
 
 
-menuLoop:                           
+menuLoop:                           ; BUCLE DEL MENU PRINCIPAL      
 
     call    checkPlayerMenuAction   ; Revisa si el usuario presiono ENTER para empezar el juego
 
@@ -129,7 +138,10 @@ menuLoop:
 
     jmp     menuLoop                ; Se llama asi misma hasta que se detecte el ENTER
 
-winnerLoop: 
+
+
+
+winnerLoop:                         ; BUCLE DE PANTALLA DE GANADOR
 
     call    checkPlayerMenuAction   ; Verifica si el jugador presiono el ENTER para jugar de nuevo
     
@@ -137,97 +149,101 @@ winnerLoop:
 
     jmp     winnerLoop              ; Se llama asi misma hasta que se detecte el ENTER
 
-loserLoop: 
+
+
+
+loserLoop:                          ; BUCLE DE PANTALLA DE PERDEDOR
 
     call    checkPlayerMenuAction   ; Verifica si el jugador presiono el ENTER para jugar de nuevo
     
-    call    drawLoserMenu          ; Dibuja el menu de ganador de la partida
+    call    drawLoserMenu           ; Dibuja el menu de perdedor de la partida
 
-    jmp     loserLoop              ; Se llama asi misma hasta que se detecte el ENTER
+    jmp     loserLoop               ; Se llama asi misma hasta que se detecte el ENTER
 
-gameLoop:                           
+
+
+
+gameLoop:                           ; BUCLE PRINCIPAL DEL JUEGO
 
     call    drawInGameText          ; Dibuja el menu de controles dentro del juego principal
 
     call    timerLoop               ; Verifica el estado del temporizador
 
-    call    drawInGameTime
+    call    drawInGameTime          ; Permite dibujar todo lo relacionado con el tiempo restante de juego
 
-    call    checkPlayerGameInput    ; Revisa contanstemente las teclas para detectar cualquier movimiento del jugador en juego 
+    call    makeMovements           ; Revisa contanstemente las teclas para detectar cualquier movimiento del jugador en juego 
 
     call    renderPlayer            ; Permite dibujar al jugador en la posicion donde se encuentre
 
     jmp     gameLoop                ; Se llama asi misma hasta que ocurra alguna accion por parte del usuario
 
 
-initTimer:
 
-    mov ah, 02h        ; Función para obtener la hora del sistema
-    int 0x1A
+timerLoop:                           ; FUNCION PARA OBTENER LA HORA DEL SISTEMA
 
-    mov  [timerSeconds], dh   
-    ret
+    mov     ah, 02h                  ; Se setea el valor de ah necesario para que la interrupcion devuelva la hora del sistema
+    int     0x1A                     ; Se ejecuta la interrupcion que devuelve la hora del sistema
 
-timerLoop:
+    mov     bx , [clockSeconds]      ; Se da el valor del ultimo segundo al registro bx
+    cmp     [clockSeconds], dh       ; Se compara el segundo actual con el ultimo registro para ver si ya paso un segundo 
+    jne     delayLoop                ; Si ya paso el segundo entonces llama a la funcion que actualiza las variables y printea en pantalla
 
-    mov ah, 02h        ; Función para obtener la hora del sistema
-    int 0x1A
-
-    mov bx , [clockSeconds]
+    ret                              ; Devuelve al bucle principal
 
 
-    cmp [clockSeconds], dh          ; Movemos los segundos (DH) a AL 
-    jne delayLoop
 
-    ret
-
-delayLoop:
-
-    mov [clockSeconds], dh
-
-    dec  word [secondsLeft]       ; Resta un segundo al temporizador  
+delayLoop:                           ; FUNCION QUE PERMITE CAMBIAR EL VALOR DEL CONTADOR EN PANTALLA
+ 
+    mov     [clockSeconds], dh       ; Se actualiza la variable con el ultimo valor de segundo registrado
+    dec     word [secondsLeft]       ; Resta un segundo al valor restante del temporizador  
 
 
-    cmp  word [secondsunit], 48 
-    je   delayLoopAux
+    cmp     word [secondsunit], 48   ; Se revisa si ya las unidades llegaron a 0
+    je      delayLoopAux             ; Si es cero entonces se llama a la funcion que resta decenas y resetea unidades a 9
 
 
-    dec  word [secondsunit]
+    dec     word [secondsunit]       ; Si aun no es 0 entonces se resta una unidad indicando que paso un segundo
 
-    cmp word [secondsLeft], 0
-    je lose
+    cmp     word [secondsLeft], 0    ; Si los segundos restantes son 0 quiere decir que el jugador se ha quedado sin tiempo
+    je      lose                     ; Llama a la pantalla de perdedor
 
-    ret
-
-delayLoopAux:
-
-    mov  word [secondsunit], 57
-    dec word [secondsdecs]
-
-    ret
+    ret                              ; Devuelve al bucle principal
 
 
-; Funciones de renderizado del jugador y pintado ------------------------------------------------------------------------------*
 
-clearScreen:
+delayLoopAux:                        ; FUNCION COMPLEMENTARIA QUE AYUDA A CAMBIAR EL CONTADOR EN PANTALLA
+
+    mov    word [secondsunit], 57    ; Resetea el valor de unidades en 9
+    dec    word [secondsdecs]        ; Decrementa una decena indicando que ya pasaron 10 segundos
+
+    ret                              ; Devuelve al bucle principal
+
+
+
+
+; Funciones de renderizado del jugador y pintado -------------------------------------------------------------------------------
+
+clearScreen:                        ; FUNCION QUE PERMITE ELIMINAR TODOS LOS ELEMENTOS EN PANTALLA
 
     mov     cx, 00h                 ; Establece la posicion inicial x de la pantalla
     mov     dx, 00h                 ; Establece la posicion inicial y de la pantalla
     jmp     clearScreenAux          
 
 
-clearScreenAux:
-    mov     ah, 0ch                 
-    mov     al, 00h                 
-    mov     bh, 00h
+clearScreenAux:                     ; FUNCION COMPLEMENTARIA QUE ELIMINA LOS ELEMENTOS DE LA PANTALLA
+    mov     ah, 0ch                 ; Seteo de valores para ejecutar la interrupcion 10h
+    mov     al, 00h                 ; Seteo de valores para ejecutar la interrupcion 10h
+    mov     bh, 00h                 ; Seteo de valores para ejecutar la interrupcion 10h
     int     10h                     ; Llama a la interrupcion para que se pinte de negro el fondo
     inc     cx                      ; Va incrementando el valor en la horizontal de la pantalla
     cmp     cx, [width]             ; Compara si ya se llego al ancho maximo sino sigue hasta pintar todo
     jng     clearScreenAux          
+
     jmp     clearScreenAux2         
 
 
-clearScreenAux2:                  
+clearScreenAux2:                    ; FUNCION COMPLEMENTARIA 2 QUE ELIMINA LOS ELEMENTOS DE LA PANTALLA
+
     mov     cx, 00h                 ; Reinicia la posicion en x
     inc     dx                      ; Incrementa en 1 la y para escribir en la siguiente linea
     cmp     dx, [height]            ; Compara si ya se llego a la altura maxima sino sigue hasta pintar todo
@@ -235,7 +251,7 @@ clearScreenAux2:
     ret                             
 
 
-checkPlayerMenuAction:             
+checkPlayerMenuAction:              ; FUNCION QUE SE ENCARGA DE DETECTAR SI EL JUGADOR ACCIONO ALGUNA TECLA EN EL MENU INICIO
     mov     ah, 01h                
     int     16h                     ; Llama a la interrupcion que detecta movimiento en el teclado
     jz      exitRoutine             ; Si no se presiona nada se retorna al bucle del juego principal
@@ -247,7 +263,8 @@ checkPlayerMenuAction:
     ret                             ; Si ningun escenario pasa, devuelve al bucle prinicipal
 
 
-drawTextMenu:                       
+drawTextMenu:                       ; FUNCION QUE SE ENCARGA DE PRINTEAR EL MENU PRINCIPAL EN PANTALLA
+
     mov     bx, [textColor]         ; Establece el color del texto para pintar el Menu Principal
 
     mov     bx, menu1               ; Selecciona el texto que quiere escribir
@@ -277,7 +294,8 @@ drawTextMenu:
 
     ret
 
-drawInGameTime:
+drawInGameTime:                     ; FUNCION QUE SE ENCARGA DE PRINTEAR EL TEMPORIZADOR EN PANTALLA
+
 
     mov     bx, [textColor]         ; Establece el color del texto para pintar el texto In Game
 
@@ -304,7 +322,9 @@ drawInGameTime:
     ret
 
 
-drawInGameText:
+drawInGameText:                     ; FUNCION QUE SE ENCARGA DE PRINTEAR EL MENU DE CONTROLES EN PANTALLA
+
+
     mov     bx, [textColor]         ; Establece el color del texto para pintar el texto In Game
 
     mov     bx, inGame1             ; Selecciona el texto que quiere escribir
@@ -341,6 +361,7 @@ drawInGameText:
     mov     dh, 12h          
     mov     dl, 02h               
     call    drawText
+
 
     ;Verifica la habilidad que esta en ejecucion para indicarla en pantalla
 
@@ -383,7 +404,7 @@ drawInGameTextAux3:
     ret
 
 
-drawWinnerMenu:                     ; Se encarga de dibujar el menu cuando el jugador gano la partida
+drawWinnerMenu:                     ; FUNCION ENCARGADA DE PRINTEAR LA PANTALLA DE GANADOR
 
     mov     bx, [textColor]         ; Se establece el color del texto 
     inc     bx                      ; Incrementa el color en 1 para que de un efecto de arcoiris y que la animacion sea cambiar de color
@@ -417,19 +438,19 @@ drawWinnerMenu:                     ; Se encarga de dibujar el menu cuando el ju
 
     ret
 
-drawLoserMenu:                      ; Se encarga de dibujar el menu cuando el jugador gano la partida
+drawLoserMenu:                      ; FUNCION ENCARGADA DE PRINTEAR LA PANTALLA DE PERDEDOR
 
     mov     bx, [textColor]         ; Se establece el color del texto 
     inc     bx                      ; Incrementa el color en 1 para que de un efecto de arcoiris y que la animacion sea cambiar de color
     mov     [textColor], bx         ; Guarda el nuevo color
 
-    mov     bx, loser1             ; Selecciona el texto que quiere escribir
+    mov     bx, loser1              ; Selecciona el texto que quiere escribir
     mov     dh, 07h                 ; Selecciona la coordenada y en pixeles donde se escribira
     mov     dl, 02h                 ; Selecciona la coordenada X en pixeles donde se escribira 
     call    drawText                ; Llama a la funcion que lo coloca en pantalla
 
 
-    mov     bx, loser2             ; Cambia a la siguiente linea de texto
+    mov     bx, loser2              ; Cambia a la siguiente linea de texto
     inc     dh                      ; Incrementa el valor de y para dibujar la nueva linea justo debajo de la otra
     mov     dl, 02h                 
     call    drawText                
@@ -439,7 +460,7 @@ drawLoserMenu:                      ; Se encarga de dibujar el menu cuando el ju
     mov     dl, 02h                 
     call    drawText                
 
-    mov     bx, loser4         
+    mov     bx, loser4          
     inc     dh                                       
     mov     dl, 02h                 
     call    drawText                
@@ -451,14 +472,14 @@ drawLoserMenu:                      ; Se encarga de dibujar el menu cuando el ju
 
     ret
 
-drawText:                           ; Esta funcion se encarga de dibujar texto en pantalla
+drawText:                           ; FUNCION QUE SE ENCARGA DE DIBUJAR CADENAS DE CARACTERES EN PANTALLA
 
     cmp     byte [bx],0             ; Verifica si el texto ya se termino de dibujar en pantalla
-    jz      finishDraw              ; Vuelve al bucle principal si ya termino
+    jz      exitRoutine             ; Vuelve al bucle principal si ya termino
     jmp     drawChar                ; Sino sigue al siguiente caracter
 
 
-drawChar:                           ; Permite dibujar un caracter en pantalla
+drawChar:                           ; FUNCION QUE SE ENCARGA DE DIBUJAR CARACTERES EN PANTALLA
 
     push    bx                      ; Agrega el valor del caracter a la pila de dibujo
     mov     ah, 02h                 ; Indica que se va a pintar un caracter en pantalla
@@ -478,37 +499,36 @@ drawChar:                           ; Permite dibujar un caracter en pantalla
     inc     bx                      ; Incrementa en 1 para leer el siguiente caracter
     inc     dl                      
     jmp     drawText                ; Devuelve al ciclo de dibujado principal
+                        
 
 
+setRandomSpawn:                     ; FUNCION QUE PERMITE SPAWNEAR AL JUGADOR EN UNA POSICION ALEATORIA  
 
-finishDraw:                         ; Permite volver al ciclo principal cuando el caracter ya se pinto
-    ret                             
+    mov ah, 02h                     ; Se setea el valor de ah necesario para que la interrupcion devuelva la hora del sistema
+    int 0x1A                        ; Se ejecuta la interrupcion que devuelve la hora del sistema
 
+    movsx ax, ch                    ; Se almacenan los minutos en un registro
+    movsx bx, dh                    ; Se almacenan los segundos en un registro
 
-setRandomSpawn:      
-
-    mov ah, 02h        ; Función para obtener la hora del sistema
-    int 0x1A
-
-    movsx ax, ch
-    movsx bx, dh
-
-    mul bx
+    mul bx                          ; Se multiplican segundos x minutos para obtener un posicion aleatoria
     
-    mov [player_y], bx ; Asigna el valor normalizado a y
-    mov [temp_player_y], bx ; Guarda la misma coordenada en el temp y
-    mov [player_x], bx ; Asigna el valor normalizado a y
-    mov [temp_player_x], bx ; Guarda la misma coordenada en el temp y
+    mov [player_y], bx              ; Asigna el valor calculado  a y
+    mov [temp_player_y], bx         ; Guarda la misma coordenada en el temp y
+    mov [player_x], bx              ; Asigna el valor calculado a x
+    mov [temp_player_x], bx         ; Guarda la misma coordenada en el temp x
 
-    ret
+    ret                             ; Se devuelve al bucle principal
 
 
-renderPlayer:                        ; Permite dibujar al jugador en pantalla.
+
+renderPlayer:                        ; FUNCION QUE PERMITE DIBUJAR AL JUGADOR EN PANTALLA.
+
     mov     cx, [player_x]           ; Posicion x donde sera dibujado
     mov     dx, [player_y]           ; Posicion y donde sera dibujado
     jmp     renderPlayerAux           
 
-renderPlayerAux:
+renderPlayerAux:                     ; FUNCION COMPLEMENTARIA QUE PERMITE DIBUJAR AL JUGADOR EN PANTALLA.
+
     mov    ah, 0ch                   ; Indica que se va a dibujar un pixel en pantalla
     mov    al, [player_color]        ; Indica el color del pixel (color del jugador)
     mov    bh, 00h                   ; Indica en que pagina lo va a dibujar (predeterminada)
@@ -520,7 +540,8 @@ renderPlayerAux:
     jng    renderPlayerAux           ; Si aun no es mas grande sigue dibujando la siguiente columna
     jmp    renderPlayerAux2          ; Sino salta a la siguiente funcion de dibujo (dibujar altura del sprite)
 
-renderPlayerAux2:
+renderPlayerAux2:                    ; FUNCION COMPLEMENTARIA QUE PERMITE DIBUJAR AL JUGADOR EN PANTALLA.
+
     mov     cx, [player_x]           ; Restablece el valor de las columnas
     inc     dx                       ; Aumenta en la fila
     mov     ax, dx                  
@@ -530,7 +551,7 @@ renderPlayerAux2:
     ret                              ; Sino vuelve al bucle principal
 
 
-deletePlayer:                        ; Funcion que elimina al jugador de la pantalla
+deletePlayer:                        ; FUNCION  QUE PERMITE ELIMINAR AL JUGADOR EN PANTALLA.
 
 
     mov     ax, [eraseMode]          ; Obtiene el valor actual de paintMode
@@ -542,7 +563,7 @@ deletePlayer:                        ; Funcion que elimina al jugador de la pant
     ret                              ; Vuelve al bucle principal
 
 
-deletePlayerAux1:                   ; Modo no borrador, pasa encima de una casilla pintada
+deletePlayerAux1:                   ; FUNCION COMPLEMENTARIA QUE PERMITE DIBUJAR AL JUGADOR EN PANTALLA.(SI PASO POR UNA CASILLA PINTADA)
 
     mov     al, [lastColor]         ; Establece el color que a casilla tenia antes de llegar ahi el jugador
     mov     [player_color], al      ; Actualiza el color del jugador con el de la casilla
@@ -551,7 +572,7 @@ deletePlayerAux1:                   ; Modo no borrador, pasa encima de una casil
     mov     [player_color], al      ; Lo actualiza en la variable
     ret                             ; Vuelve al ciclo principal
 
-deletePlayerAux2:                   ; Modo borrador
+deletePlayerAux2:                   ; FUNCION COMPLEMENTARIA QUE PERMITE DIBUJAR AL JUGADOR EN PANTALLA.(SI ESTA BORRANDO)
 
     mov     al, 00h                 ; Guarda el color del fondo (negro)
     mov     [player_color], al      ; Establece el color negro como el del jugador
@@ -562,13 +583,7 @@ deletePlayerAux2:                   ; Modo borrador
     ret                             ; Vuelve al ciclo principal
 
 
-checkPlayerGameInput:               ; Verifica cualquier accion del jugador
-
-    mov     ax, 00h                 ; Restablece el valor del registro en 0
-    cmp     ax, [gamePaused]        ; Si el juego no esta pausado revisa los movimientos
-    je      makeMovements           ; Salta al chequeador de movimientos
-
-makeMovements:                      ; Funcion que se encarga de ejecutar acciones segun el movimiento que se detecte
+makeMovements:                      ; FUNCION QUE SE ENCARGA DE DETECTAR LOS INPUTS DE TECLADO Y EJECUTAR LAS ACCIONES QUE CORRESPONDAN
 
     mov     ah, 01h                 ; Indica que se va a leer una entrada de teclado
     int     16h                     ; Ejecuta la interrupcion de teclado
@@ -618,7 +633,7 @@ makeMovements:                      ; Funcion que se encarga de ejecutar accione
 
     ret
 
-playerUp:                           ; Mueve al jugador hacia arriba
+playerUp:                           ; FUNCION QUE SE ENCARGA DE MOVER EL JUGADOR HACIA ARRIBA
 
     mov     al, [purple_color]      ; Guarda el color del cual se debe pintar el movimiento
     mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
@@ -629,7 +644,6 @@ playerUp:                           ; Mueve al jugador hacia arriba
     mov     ax, [player_y] 
     mov     [color_player_y], ax    ; Guarda las posiones de y de la casilla para pintar en ella
     xor     ax, ax
-
 
     mov     ax, 06h                 ; Mueve en 6 al registro ax
     cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
@@ -648,7 +662,7 @@ playerUp:                           ; Mueve al jugador hacia arriba
     jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
 
 
-playerNO:                           ; Mueve al jugador hacia  Nor-Oeste
+playerNO:                           ; FUNCION QUE SE ENCARGA DE MOVER EL JUGADOR HACIA NOR-OESTE
 
     mov     al, [red_color]         ; Guarda el color del cual se debe pintar el movimiento     
     mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
@@ -663,7 +677,6 @@ playerNO:                           ; Mueve al jugador hacia  Nor-Oeste
     mov     ax, 06h                 ; Mueve en 6 al registro ax
     cmp     [player_y], ax          ; Compara si la posicion y esta por tocar un borde con el movimiento
     jle      exitRoutine            ; Si lo tocaria entonces no lo mueve
-
 
     xor     ax,ax
 
@@ -681,8 +694,6 @@ playerNO:                           ; Mueve al jugador hacia  Nor-Oeste
 
     mov     [player_y], ax          ; Actualiza la posicion del jugador en y
 
-
-
     mov     ax, [player_x]          
     sub     ax, [player_speed]      ; Resta la velocidad del jugador para poder moverlo izquierda
     mov     [temp_player_x], ax     ; Guarda el nuevo valor de x en la variable temporal
@@ -696,7 +707,7 @@ playerNO:                           ; Mueve al jugador hacia  Nor-Oeste
 
 
     
-playerDown:                         ; Mueve al jugador hacia abajo
+playerDown:                         ; FUNCION QUE SE ENCARGA DE MOVER EL JUGADOR HACIA ABAJO
 
     mov     al, [purple_color]      ; Guarda el color del cual se debe pintar el movimiento  
     mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
@@ -731,7 +742,7 @@ playerDown:                         ; Mueve al jugador hacia abajo
 
 
 
-playerSE:                           ; Mueve al jugador hacia  Sur-Este
+playerSE:                           ; FUNCION QUE SE ENCARGA DE MOVER EL JUGADOR HACIA EL SUR-ESTE
 
     mov     al, [red_color]         ; Guarda el color del cual se debe pintar el movimiento 
     mov     [currentColor], al      ; Establece el color como el actual
@@ -768,7 +779,9 @@ playerSE:                           ; Mueve al jugador hacia  Sur-Este
 
     jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
 
-playerRight:                        ; Mueve al jugador hacia la derecha
+
+
+playerRight:                        ; FUNCION QUE SE ENCARGA DE MOVER EL JUGADOR HACIA LA DERECHA
 
     mov     al, [yellow_color]      ; Guarda el color del cual se debe pintar el movimiento 
     mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
@@ -802,7 +815,7 @@ playerRight:                        ; Mueve al jugador hacia la derecha
 
 
 
-playerSO:                           ; Mueve al jugador hacia el Sur-Oeste
+playerSO:                           ; FUNCION QUE SE ENCARGA DE MOVER EL JUGADOR HACIA EL SUR-OESTE
 
     mov     al, [blue_color]        ; Guarda el color del cual se debe pintar el movimiento 
     mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
@@ -840,7 +853,7 @@ playerSO:                           ; Mueve al jugador hacia el Sur-Oeste
     jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
 
 
-playerLeft:                         ; Mueve al jugador hacia la izquierda
+playerLeft:                         ; FUNCION QUE SE ENCARGA DE MOVER EL JUGADOR HACIA LA IZQUIERDA
 
     mov     al, [yellow_color]      ; Guarda el color del cual se debe pintar el movimiento 
     mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
@@ -869,7 +882,7 @@ playerLeft:                         ; Mueve al jugador hacia la izquierda
     jmp     verifyMode              ; Revisa el modo de movimiento (Normal,Pintando,Borrando)
 
     
-playerNE:                           ; Mueve al jugador hacia  Nor-Este
+playerNE:                           ; FUNCION QUE SE ENCARGA DE MOVER EL JUGADOR HACIA EL NOR-ESTE
 
     mov     al, [blue_color]        ; Guarda el color del cual se debe pintar el movimiento 
     mov     [currentColor], al      ; Establece el color como el actual para luego colorear si es necesario
@@ -910,7 +923,7 @@ playerNE:                           ; Mueve al jugador hacia  Nor-Este
 
 
 
-verifyMode:                    
+verifyMode:                         ; FUNCION QUE SE ENCARGA DE DETERMINAR QUE ACCION HACE SEGUN EL MODO ESTABLECIDO
 
     xor     ax,ax
     mov     ax, [paintMode]         ; Verifica el estado de pintura
@@ -925,7 +938,8 @@ verifyMode:
 
     ret                             ; Vuelve al bucle principal
 
-togglePaintMode:
+
+togglePaintMode:                    ; FUNCION QUE SE ENCARGA DE CAMBIAR EL ESTADO DE PINTADO
 
     mov     ax, [eraseMode]         ; Obtiene el valor actual de eraseMode
     cmp     ax, 01h                 ; Verifica si esta en modo borrar 
@@ -933,7 +947,7 @@ togglePaintMode:
 
     ret                             ; Vuelve al ciclo principal
 
-togglePaintModeAux:
+togglePaintModeAux:                 ; FUNCION COMPLEMENTARIA QUE SE ENCARGA DE CAMBIAR EL ESTADO DE PINTADO
 
     mov     ax, [paintMode]         ; Obtiene el valor actual de paintMode
     xor     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
@@ -941,7 +955,7 @@ togglePaintModeAux:
 
     ret                             ; Vuelve al ciclo principal
 
-toggleEraseMode:
+toggleEraseMode:                    ; FUNCION QUE SE ENCARGA DE CAMBIAR EL ESTADO DE BORRADO
 
     mov     ax, [paintMode]         ; Obtiene el valor actual de paintMode
     cmp     ax, 01h                 ; Verifica si esta en modo pintar 
@@ -949,7 +963,7 @@ toggleEraseMode:
 
     ret                             ; Vuelve al ciclo principal
 
-toggleEraseModeAux:
+toggleEraseModeAux:                 ; FUNCION COMPLEMENTARIA QUE SE ENCARGA DE CAMBIAR EL ESTADO DE PINTADO
 
     mov     ax, [eraseMode]         ; Obtiene el valor actual de eraseMode
     xor     ax, 01h                 ; Invierte el valor (0 a 1 o 1 a 0)
@@ -958,13 +972,14 @@ toggleEraseModeAux:
     ret                             ; Vuelve al ciclo principal
 
 
-paintInGame:
+paintInGame:                        ; FUNCION QUE SE ENCARGA DE PINTAR ESTABLECER LAS COORDENADAS PARA PINTAR EN PANTALLA
 
     mov     cx, [color_player_x]    ; Obtiene el valor de x de la casilla que se va a pintar
     mov     dx, [color_player_y]    ; Obtiene el valor de y de la casilla que se va a pintar
     jmp     paintLoop               ; Llama al paintloop que pintara la casilla
 
-paintLoop:
+
+paintLoop:                          ; BUCLE QUE SE ENCARGA DE PINTAR LA CASILLA DEL COLOR CORRESPONDIENTE (FILAS)
 
     mov     ah, 0ch                 ; Indica que se va a dibujar un pixel en pantalla
     mov     al, [currentColor]      ; Indica el color del pixel (color segun movimiento) 
@@ -979,7 +994,7 @@ paintLoop:
 
 
 
-paintLoop2:
+paintLoop2:                         ; BUCLE QUE SE ENCARGA DE PINTAR LA CASILLA DEL COLOR CORRESPONDIENTE (COLUMNAS)
 
     mov     cx, [color_player_x]    ; Restablece el valor de las columnas
     inc     dx                      ; Aumenta en la fila
@@ -989,8 +1004,10 @@ paintLoop2:
     jng     paintLoop               ; Si aun no es mas grande sigue dibujando la siguiente fila
 
     ret                             ; Sino vuelve al bucle principal 
+
     
-eraseInGame:
+eraseInGame:                        ; BUCLE QUE SE ENCARGA DE BORRAR LA CASILLA DE LA PANTALLA
+
     mov     al, 00h                 ; Guarda el hexa del color verde en el registro al
     mov     [currentColor], al      ; Establece el color como el actual
     xor     al, al
@@ -1000,147 +1017,89 @@ eraseInGame:
     
 
     ret                             ; Sino vuelve al bucle principal 
-        
 
-exitPlayerMovement:
-    mov     ax, [player_x]            
-    mov     [temp_player_x], ax           
-    mov     ax, [player_y]            
-    mov     [temp_player_y], ax          
+checkPlayerColision:                ; FUNCION DE VERIFICAR LA WIN CODITION SI SE DETECTA LA COLISION CON LA PARED
 
-    call    resetGame 
+    push    ax
+    mov     cx, [temp_player_x]
+    mov     dx, [temp_player_y]     ; Se setean los valores necesarios para ejecutar la interrupcion 10h
+    mov     ah, 0dh
+    mov     bh, 00h
+    int     10h
 
-resetGame:
-    call clearCounter
-    call    clearScreen             ; Llama al limpiador de pantalla 
-    jmp     startGame               ; Vuelve a llamar al inicio de juego
-
-win:
-    call clearCounter
-    call    clearScreen
-    jmp     winnerLoop
-
-lose:
-    call clearCounter
-    call    clearScreen
-    jmp     loserLoop
-
-clearCounter:
-    mov word [secondsLeft], 60
-    mov word [secondsunit], 48
-    mov word [secondsdecs], 54
-
-exitRoutine:                       
-    ret                             ; Permite salir de una rutina y vuelve al ciclo principal
-
-
-
-
-;-----------------------Check colisions-----------------------
-
-;compares if the pixel in the position of the temp x and y of the player, matches the color of a wall
-;if that happens it means the player movement made him collide with a wall
-;But if the color of the pixel is red, it means the player reached the goal
-checkPlayerColision:
-    push ax
-
-    mov cx, [temp_player_x]
-    mov dx, [temp_player_y]
-    mov ah, 0dh
-    mov bh, 00h
-    int 10h
-
-    mov [lastColor], al  ; Establece el color como el actual
-
-    ; Comparación adicional entre lastColor y currentColor
-    cmp al, [currentColor]
-    je skipWin  ; Si lastColor es igual a currentColor, salta la etiqueta win
-
-
-    ; Verifica si paintMode es 1
-    mov al, [paintMode]  ; Carga el valor de paintMode en al
-    cmp al, 01h            ; Compara con 1
-    je skipAdditionalComparison  ; Si paintMode no es 1, salta la comparación adicional
+    mov     [lastColor], al         ; Establece el color de la casilla siguiente
 
     
-skipAdditionalComparison:
-    ; Comparaciones regulares de colores
-    mov al, [lastColor]
+    cmp     al, [currentColor]      ; Verifica si el color al que me mueve es igual al color que voy a pintar 
+    je      skipWin                 ; Si es asu entonces no puede ganar por lo que sale de la verificacion
 
-    cmp al, [purple_color]
-    je  win
 
-    cmp al, [blue_color]
-    je  win
+    
+    mov     bl, [paintMode]         ; Carga el valor de paintMode en bl 
+    cmp     bl, 01h                 ; Verifica si el modo de pintura esta activado
+    je      skipAdditionalComparison; Si paintMode es 1 y por ende esta activo, entonces salta a la comparación adicional de color
+
+    
+skipAdditionalComparison:           ; FUNCION QUE VERIFICA EL COLOR CON EL CUAL CHOCA PARA DAR LA CONDICION DE GANADOR
+    
+    mov     al, [lastColor]         ; Vuelve a cargar el color de la casilla destino
+
+    cmp     al, [purple_color]
+    je      win
+
+    cmp     al, [blue_color]        ; Compara el color de la castilla destino con los de pintado
+    je      win
      
-    cmp al, [red_color]
-    je  win
+    cmp     al, [red_color]
+    je      win
 
-    cmp al, [yellow_color]
-    je  win
+    cmp     al, [yellow_color]
+    je      win
 
-skipWin:
-    pop ax
+skipWin:                            ; FUNCION QUE SALTA LA PANTALLA DE WIN
+
+    pop    ax
 
     ret
+      
+
+resetGame:                          ; FUNCION QUE REINICIA EL JUEGO 
+
+    call    clearCounter            ; Llama al reiniciador del temporizador y flags
+
+    call    clearScreen             ; Llama al limpiador de pantalla 
+
+    jmp     startGame               ; Vuelve a llamar al inicio de juego
+
+win:                                ; FUNCION QUE SE ENCARGA DEL MENU DE GANADOR
+
+    call    clearCounter            ; Llama al reiniciador del temporizador y flags
+
+    call    clearScreen             ; Llama al limpiador de pantalla
+
+    jmp     winnerLoop              ; Llamar a la animacion de ganador
 
 
+lose:                               ; FUNCION QUE SE ENCARGA DEL MENU DE PERDEDOR
+
+    call    clearCounter            ; Llama al reiniciador del temporizador y flags
+
+    call    clearScreen             ; Llama al limpiador de pantalla
+
+    jmp     loserLoop               ; Llamar a la animacion de perdedor
 
 
+clearCounter:                       ; FUNCION QUE SE ENCARGA DE REINICIAR EL TEMPORIZADOR Y LAS FLAGS
 
-;goalReached:
-;     mov    ax, 01h
-;     cmp    ax, [level]
-;     je     startLevel2
-;     call   clearScreen
-;     jmp    winnerLoop
+    mov     word [secondsLeft], 60  ; Reinicia los segundos restantes a 60 (1 mins)
+    mov     word [secondsdecs], 54  ; Reinicia las decenas  restantes a 6 
+    mov     word [secondsunit], 48  ; Reinicia las unidades restantes a 0 
+    mov     word [paintMode], 00h   ; Reinicia el valor de la flag de pintar a 0
+    mov     word [eraseMode], 00h   ; Reinicia el valor de la flag de borrar a 0
 
 
-; ;-----------------------Render Goal-----------------------
+exitRoutine:                        ; FUNCION QUE SE VOLVER A LOS CICLOS PRINCIPALES
 
-; renderGoal:
-;     mov    ax, 01h
-;     cmp    ax, [level]
-;     je     renderGoalLevel1
-;     jmp    renderGoalLevel2
+    ret                             ; Permite salir de una rutina y vuelve al ciclo principal
 
-; renderGoalLevel1: 
-;     mov ax, [goal_level_1_x]
-;     mov [goal_x], ax
-;     mov ax, [goal_level_1_y]
-;     mov [goal_y], ax
-;     jmp renderGoalAux
-
-; renderGoalLevel2: 
-;     mov ax, [goal_level_2_x]
-;     mov [goal_x], ax
-;     mov ax, [goal_level_2_y]
-;     mov [goal_y], ax
-;     jmp renderGoalAux
-
-; renderGoalAux:
-;     mov     cx, [goal_x]            
-;     mov     dx, [goal_y]            
-;     jmp     renderGoalAux1         
-
-; renderGoalAux1:
-;     mov     ah, 0ch                 ; Draw pixel
-;     mov     al, [goal_color]        ; player color 
-;     mov     bh, 00h                 ; Page
-;     int     10h                     ; Interrupt 
-;     inc     cx                      ; cx +1
-;     mov     ax, cx                  
-;     sub     ax, [goal_x]          ; Substract player width with the current column
-;     cmp     ax, [player_size]       ; compares if ax is greater than player size
-;     jng     renderGoalAux1         ; if not greater, draw next column
-;     jmp     renderGoalAux2        ; Else, jump to next aux function
-
-; renderGoalAux2:
-;     mov     cx, [goal_x]            ; reset columns
-;     inc     dx                        ; dx +1
-;     mov     ax, dx                  
-;     sub     ax, [goal_y]            ; Substract player height with the current row
-;     cmp     ax, [player_size]         ; compares if ax is greater than player size
-;     jng     renderGoalAux1           ; if not greater, draw next row
-;     ret                               ; Else, return
 
